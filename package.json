@@ -1,0 +1,35 @@
+{
+  "name": "nodebb-plugin-reactions",
+  "version": "0.0.1",
+  "nbbpm": {
+    "compatibility": "^1.4.0"
+  },
+  "description": "Reactions plugin for NodeBB",
+  "main": "library.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pichalite/nodebb-plugin-reactions.git"
+  },
+  "keywords": [
+    "nodebb",
+    "plugin",
+    "reactions"
+  ],
+  "author": {
+    "name": "pichalite",
+    "email": "pichalite.com@gmail.com"
+  },
+  "bugs": {
+    "url": "https://github.com/pichalite/nodebb-plugin-reactions/issues"
+  },
+  "maintainers": [
+    {
+      "name": "pichalite",
+      "email": "pichalite.com@gmail.com"
+    }
+  ],
+  "dependencies": {
+    "async": "^2.1.4"
+  },
+  "license": "MIT"
+}

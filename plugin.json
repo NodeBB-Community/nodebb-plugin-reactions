@@ -1,0 +1,37 @@
+{
+    "id": "nodebb-plugin-reactions",
+    "name": "NodeBB Reactions",
+    "description": "Reactions plugin for NodeBB",
+    "url": "https://github.com/pichalite/nodebb-plugin-reactions",
+    "library": "./library.js",
+    "templates": "templates",
+    "less": [
+        "less/reactions.less"
+    ],
+    "scripts": [
+        "lib/client.js"
+    ],
+    "acpScripts": [
+        "lib/admin.js"
+    ],
+    "hooks": [
+        {
+            "hook": "static:app.load", "method": "init"
+        },
+        {
+            "hook": "filter:admin.header.build", "method": "addAdminNavigation"
+        }, 
+        {
+            "hook": "filter:config.get", "method": "getPluginConfig"
+        },
+        {
+            "hook": "filter:post.getPosts", "method": "getReactions"
+        },
+        {
+            "hook": "filter:post.get", "method": "onReply"
+        },
+        {
+            "hook": "action:post.purge", "method": "deleteReactions"
+        }
+    ]
+}
