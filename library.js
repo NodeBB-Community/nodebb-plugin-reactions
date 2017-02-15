@@ -118,76 +118,82 @@ reactions.getPluginConfig = function(config, callback) {
 };
 
 reactions.getReactions = function(data, callback) {
-	async.eachSeries(data.posts, function(post, next) {
-		
-		async.series({
-		    maximumReactions: function(cb) {
-		        meta.settings.get('reactions', function(err, settings) {
-					var maximumReactions = settings.maximumReactions || 5;
-					cb(null, maximumReactions);
-		        });
-		    },
-		    totalReactions: function(cb) {
-		        db.setCount('pid:' + post.pid + ':reactions', cb);
-		    },
-		    reactions: function(cb) {
-		    	async.waterfall([
-				    function(callback) {
-				        db.getSetMembers('pid:' + post.pid + ":reactions", function(err, reactions) {
-							callback(null, reactions);
-				    	});
-				    },
-				    function(reactions, callback) {
-				    	var reactionData = [];
-				    	
-				    	async.each(reactions, function(reaction, next) {
-				    		db.getSetMembers('pid:' + post.pid + ':reaction:' + reaction, function(err, uids) {
-				    			user.getUsersFields(uids, ['uid', 'username'], function(err, userdata) {
-				    				reactionData.push({reaction, userdata, memberCount: uids.length, reacted: uids.indexOf(data.uid.toString()) >= 0});
-				    				next();	
-				    			});
-				    		});
-				    	}, function(err) {
-				    		callback(null, reactionData);
-				    	});
-				    },
-				    function(uidData, callback) {
-				        callback(null, uidData);
-				    }
-				], function (err, result) {
-				    cb(null, result);
-				});
-		    }
-		}, function(err, results) {
-			var reactionInfo = '<span class="reactions" component="post/reactions" data-pid="' + post.pid + '">';
-			var maxReactionsReached = results.totalReactions >= results.maximumReactions ? ' max-reactions': '';
-			reactionInfo = reactionInfo + '<span class="reaction-add' + maxReactionsReached + '" component="post/reaction/add" data-pid="' + post.pid + '" title="Add reaction"><i class="fa fa-plus-square-o"></i></span>';
-
-			results.reactions.forEach(function(reaction, index) {
-				var usernames = reaction.userdata.map(function(user) {
-					return user.username
-				}).join(', ');
-				
-				var reactionImage = emojiParser.parse(':' + reaction.reaction + ':').replace('title="' + reaction + '"', '');
-				var reacted = reaction.reacted ? 'reacted' : '';
-				reactionInfo = reactionInfo + '<span class="reaction ' + reacted + '" component="post/reaction" data-pid="' + post.pid + '" data-reaction="' + reaction.reaction + '" title="' + usernames + '">' + reactionImage + '<span class="reaction-emoji-count" data-count="' + reaction.memberCount + '"></span></span>';
-			});
-			
-			post.reactions = reactionInfo + '</span>';
-			next(); 
-		});
-	}, function (err) {
-		if (err) {
-			console.log(err.message);
-		}
+	if (data.uid === 0) {
 		callback(null, data);
-	});
+	} else {
+		async.eachSeries(data.posts, function(post, next) {
+			
+			async.series({
+			    maximumReactions: function(cb) {
+			        meta.settings.get('reactions', function(err, settings) {
+						var maximumReactions = settings.maximumReactions || 5;
+						cb(null, maximumReactions);
+			        });
+			    },
+			    totalReactions: function(cb) {
+			        db.setCount('pid:' + post.pid + ':reactions', cb);
+			    },
+			    reactions: function(cb) {
+			    	async.waterfall([
+					    function(callback) {
+					        db.getSetMembers('pid:' + post.pid + ":reactions", function(err, reactions) {
+								callback(null, reactions);
+					    	});
+					    },
+					    function(reactions, callback) {
+					    	var reactionData = [];
+					    	
+					    	async.each(reactions, function(reaction, next) {
+					    		db.getSetMembers('pid:' + post.pid + ':reaction:' + reaction, function(err, uids) {
+					    			user.getUsersFields(uids, ['uid', 'username'], function(err, userdata) {
+					    				reactionData.push({reaction, userdata, memberCount: uids.length, reacted: uids.indexOf(data.uid.toString()) >= 0});
+					    				next();	
+					    			});
+					    		});
+					    	}, function(err) {
+					    		callback(null, reactionData);
+					    	});
+					    },
+					    function(uidData, callback) {
+					        callback(null, uidData);
+					    }
+					], function (err, result) {
+					    cb(null, result);
+					});
+			    }
+			}, function(err, results) {
+				var reactionInfo = '<span class="reactions" component="post/reactions" data-pid="' + post.pid + '">';
+				var maxReactionsReached = results.totalReactions >= results.maximumReactions ? ' max-reactions': '';
+				reactionInfo = reactionInfo + '<span class="reaction-add' + maxReactionsReached + '" component="post/reaction/add" data-pid="' + post.pid + '" title="Add reaction"><i class="fa fa-plus-square-o"></i></span>';
+	
+				results.reactions.forEach(function(reaction, index) {
+					var usernames = reaction.userdata.map(function(user) {
+						return user.username
+					}).join(', ');
+					
+					var reactionImage = emojiParser.parse(':' + reaction.reaction + ':').replace('title="' + reaction + '"', '');
+					var reacted = reaction.reacted ? 'reacted' : '';
+					reactionInfo = reactionInfo + '<span class="reaction ' + reacted + '" component="post/reaction" data-pid="' + post.pid + '" data-reaction="' + reaction.reaction + '" title="' + usernames + '">' + reactionImage + '<span class="reaction-emoji-count" data-count="' + reaction.memberCount + '"></span></span>';
+				});
+				
+				post.reactions = reactionInfo + '</span>';
+				next(); 
+			});
+		}, function (err) {
+			if (err) {
+				console.log(err.message);
+			}
+			callback(null, data);
+		});
+	}
 }
 
 reactions.onReply = function(data, callback) {
-	var reactionInfo = '<span class="reactions" component="post/reactions" data-pid="' + data.pid + '">';
-	reactionInfo = reactionInfo + '<span class="reaction-add" component="post/reaction/add" data-pid="' + data.pid + '" title="Add reaction"><i class="fa fa-plus-square-o"></i></span>';
-	data.reactions = reactionInfo + '</span>';
+	if (data.uid !== 0) {
+		var reactionInfo = '<span class="reactions" component="post/reactions" data-pid="' + data.pid + '">';
+		reactionInfo = reactionInfo + '<span class="reaction-add" component="post/reaction/add" data-pid="' + data.pid + '" title="Add reaction"><i class="fa fa-plus-square-o"></i></span>';
+		data.reactions = reactionInfo + '</span>';
+	}
 	callback(null, data);
 }
 
