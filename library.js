@@ -9,28 +9,39 @@ var async = require('async');
 var emojiParser = require('../nodebb-plugin-emoji-extended/lib/parser/main');
 var reactions = {};
 
-reactions.init = function(params, callback) {
+reactions.init = function (params, callback) {
 
 	SocketPlugins.reactions = {
-		addPostReaction: function(socket, data, callback) {
+		addPostReaction: function (socket, data, callback) {
+			if (!socket.uid) {
+				return callback(new Error('[[error:not-logged-in]]'));
+			}
+
+			var emojiList = Object.keys(emojiParser.activeList).map(function (item) {
+				return emojiParser.activeList[item].id;
+			});
+
+			if (emojiList.indexOf(data.reaction) === -1) {
+				return callback(new Error('Invalid reaction'));
+			}
+
 			data.uid = socket.uid;
-			meta.settings.get('reactions', function(err, settings) {
+			meta.settings.get('reactions', function (err, settings) {
 				var maximumReactions = settings.maximumReactions || 5;
-				
+
 				async.series({
-					totalReactions: function(next) {
+					totalReactions: function (next) {
 						db.setCount('pid:' + data.pid + ':reactions', next);
 					},
-					isMember: function(next) {
+					isMember: function (next) {
 						db.isSetMember('pid:' + data.pid + ':reactions', data.reaction, next);
 					}
-				}, function(err, results) {
+				}, function (err, results) {
 					if (!results.isMember && results.totalReactions >= maximumReactions) {
 						callback(new Error('Maximum reactions reached'));
-					}
-					else {
-						db.setAdd('pid:' + data.pid + ':reactions', data.reaction, function(err) {
-							db.setAdd('pid:' + data.pid + ':reaction:' + data.reaction, socket.uid, function(err) {
+					} else {
+						db.setAdd('pid:' + data.pid + ':reactions', data.reaction, function (err) {
+							db.setAdd('pid:' + data.pid + ':reaction:' + data.reaction, socket.uid, function (err) {
 								sendEvent(data, 'event:reactions.addPostReaction', callback);
 							});
 						});
@@ -38,16 +49,27 @@ reactions.init = function(params, callback) {
 				});
 			});
 		},
-		removePostReaction: function(socket, data, callback) {
+		removePostReaction: function (socket, data, callback) {
+			if (!socket.uid) {
+				return callback(new Error('[[error:not-logged-in]]'));
+			}
+
+			var emojiList = Object.keys(emojiParser.activeList).map(function (item) {
+				return emojiParser.activeList[item].id;
+			});
+
+			if (emojiList.indexOf(data.reaction) === -1) {
+				return callback(new Error('Invalid reaction'));
+			}
+
 			data.uid = socket.uid;
-			db.setRemove('pid:' + data.pid + ':reaction:' + data.reaction, socket.uid, function(err) {
-				db.setCount('pid:' + data.pid + ':reaction:' + data.reaction, function(err, reactionCount) {
+			db.setRemove('pid:' + data.pid + ':reaction:' + data.reaction, socket.uid, function (err) {
+				db.setCount('pid:' + data.pid + ':reaction:' + data.reaction, function (err, reactionCount) {
 					if (reactionCount === 0) {
-						db.setRemove('pid:' + data.pid + ':reactions', data.reaction, function(err) {
+						db.setRemove('pid:' + data.pid + ':reactions', data.reaction, function (err) {
 							sendEvent(data, 'event:reactions.removePostReaction', callback);
 						});
-					}
-					else {
+					} else {
 						sendEvent(data, 'event:reactions.removePostReaction', callback);
 					}
 				});
@@ -57,24 +79,24 @@ reactions.init = function(params, callback) {
 
 	function sendEvent(data, eventName, callback) {
 		async.series({
-			reactionCount: function(next) {
+			reactionCount: function (next) {
 				db.setCount('pid:' + data.pid + ':reaction:' + data.reaction, next);
 			},
-			totalReactions: function(next) {
+			totalReactions: function (next) {
 				db.setCount('pid:' + data.pid + ':reactions', next);
 			},
-			usernames: function(next) {
-				db.getSetMembers('pid:' + data.pid + ':reaction:' + data.reaction, function(err, uids) {
-					user.getUsersFields(uids, ['uid', 'username'], function(err, userdata) {
-						next(null, userdata.map(function(user) {
+			usernames: function (next) {
+				db.getSetMembers('pid:' + data.pid + ':reaction:' + data.reaction, function (err, uids) {
+					user.getUsersFields(uids, ['uid', 'username'], function (err, userdata) {
+						next(null, userdata.map(function (user) {
 							return user.username
 						}).join(', '));
 					});
 				});
 			}
-		}, function(err, results) {
+		}, function (err, results) {
 			if (parseInt(results.reactionCount, 10) === 0) {
-				db.setRemove('pid:' + data.pid + ':reactions', data.reaction, function(err) {
+				db.setRemove('pid:' + data.pid + ':reactions', data.reaction, function (err) {
 					if (err) {
 						callback(err);
 					}
@@ -99,7 +121,7 @@ reactions.init = function(params, callback) {
 	callback();
 };
 
-reactions.addAdminNavigation = function(header, callback) {
+reactions.addAdminNavigation = function (header, callback) {
 	header.plugins.push({
 		route: '/plugins/reactions',
 		icon: 'fa-paint-brush',
@@ -109,75 +131,80 @@ reactions.addAdminNavigation = function(header, callback) {
 	callback(null, header);
 };
 
-reactions.getPluginConfig = function(config, callback) {
-	meta.settings.get('reactions', function(err, settings) {
+reactions.getPluginConfig = function (config, callback) {
+	meta.settings.get('reactions', function (err, settings) {
 		config.maximumReactions = settings.maximumReactions ? parseInt(settings.maximumReactions, 10) : 5;
 	});
 
 	callback(false, config);
 };
 
-reactions.getReactions = function(data, callback) {
+reactions.getReactions = function (data, callback) {
 	if (data.uid === 0) {
 		callback(null, data);
 	} else {
-		async.eachSeries(data.posts, function(post, next) {
-			
+		async.eachSeries(data.posts, function (post, next) {
+
 			async.series({
-			    maximumReactions: function(cb) {
-			        meta.settings.get('reactions', function(err, settings) {
+				maximumReactions: function (cb) {
+					meta.settings.get('reactions', function (err, settings) {
 						var maximumReactions = settings.maximumReactions || 5;
 						cb(null, maximumReactions);
-			        });
-			    },
-			    totalReactions: function(cb) {
-			        db.setCount('pid:' + post.pid + ':reactions', cb);
-			    },
-			    reactions: function(cb) {
-			    	async.waterfall([
-					    function(callback) {
-					        db.getSetMembers('pid:' + post.pid + ":reactions", function(err, reactions) {
-								callback(null, reactions);
-					    	});
-					    },
-					    function(reactions, callback) {
-					    	var reactionData = [];
-					    	
-					    	async.each(reactions, function(reaction, next) {
-					    		db.getSetMembers('pid:' + post.pid + ':reaction:' + reaction, function(err, uids) {
-					    			user.getUsersFields(uids, ['uid', 'username'], function(err, userdata) {
-					    				reactionData.push({reaction, userdata, memberCount: uids.length, reacted: uids.indexOf(data.uid.toString()) >= 0});
-					    				next();	
-					    			});
-					    		});
-					    	}, function(err) {
-					    		callback(null, reactionData);
-					    	});
-					    },
-					    function(uidData, callback) {
-					        callback(null, uidData);
-					    }
-					], function (err, result) {
-					    cb(null, result);
 					});
-			    }
-			}, function(err, results) {
+				},
+				totalReactions: function (cb) {
+					db.setCount('pid:' + post.pid + ':reactions', cb);
+				},
+				reactions: function (cb) {
+					async.waterfall([
+						function (callback) {
+							db.getSetMembers('pid:' + post.pid + ":reactions", function (err, reactions) {
+								callback(null, reactions);
+							});
+						},
+						function (reactions, callback) {
+							var reactionData = [];
+
+							async.each(reactions, function (reaction, next) {
+								db.getSetMembers('pid:' + post.pid + ':reaction:' + reaction, function (err, uids) {
+									user.getUsersFields(uids, ['uid', 'username'], function (err, userdata) {
+										reactionData.push({
+											reaction,
+											userdata,
+											memberCount: uids.length,
+											reacted: uids.indexOf(data.uid.toString()) >= 0
+										});
+										next();
+									});
+								});
+							}, function (err) {
+								callback(null, reactionData);
+							});
+						},
+						function (uidData, callback) {
+							callback(null, uidData);
+						}
+					], function (err, result) {
+						cb(null, result);
+					});
+				}
+			}, function (err, results) {
 				var reactionInfo = '<span class="reactions" component="post/reactions" data-pid="' + post.pid + '">';
-				var maxReactionsReached = results.totalReactions >= results.maximumReactions ? ' max-reactions': '';
+				var maxReactionsReached = results.totalReactions >= results.maximumReactions ? ' max-reactions' : '';
 				reactionInfo = reactionInfo + '<span class="reaction-add' + maxReactionsReached + '" component="post/reaction/add" data-pid="' + post.pid + '" title="Add reaction"><i class="fa fa-plus-square-o"></i></span>';
-	
-				results.reactions.forEach(function(reaction, index) {
-					var usernames = reaction.userdata.map(function(user) {
+
+				results.reactions.forEach(function (reaction, index) {
+					var usernames = reaction.userdata.map(function (user) {
 						return user.username
 					}).join(', ');
-					
+
 					var reactionImage = emojiParser.parse(':' + reaction.reaction + ':').replace('title="' + reaction + '"', '');
 					var reacted = reaction.reacted ? 'reacted' : '';
 					reactionInfo = reactionInfo + '<span class="reaction ' + reacted + '" component="post/reaction" data-pid="' + post.pid + '" data-reaction="' + reaction.reaction + '" title="' + usernames + '">' + reactionImage + '<span class="reaction-emoji-count" data-count="' + reaction.memberCount + '"></span></span>';
 				});
-				
+
 				post.reactions = reactionInfo + '</span>';
-				next(); 
+				next();
 			});
 		}, function (err) {
 			if (err) {
@@ -188,7 +215,7 @@ reactions.getReactions = function(data, callback) {
 	}
 }
 
-reactions.onReply = function(data, callback) {
+reactions.onReply = function (data, callback) {
 	if (data.uid !== 0) {
 		var reactionInfo = '<span class="reactions" component="post/reactions" data-pid="' + data.pid + '">';
 		reactionInfo = reactionInfo + '<span class="reaction-add" component="post/reaction/add" data-pid="' + data.pid + '" title="Add reaction"><i class="fa fa-plus-square-o"></i></span>';
@@ -197,23 +224,23 @@ reactions.onReply = function(data, callback) {
 	callback(null, data);
 }
 
-reactions.deleteReactions = function(pid) {
-	db.getSetMembers('pid:' + pid + ":reactions", function(err, reactions) {
+reactions.deleteReactions = function (pid) {
+	db.getSetMembers('pid:' + pid + ":reactions", function (err, reactions) {
 		if (reactions.length > 0) {
 			async.waterfall([
-				function(callback) {
-					var keys = reactions.map(function(reaction) {
+				function (callback) {
+					var keys = reactions.map(function (reaction) {
 						return 'pid:' + pid + ':reaction:' + reaction;
 					});
 					callback(null, keys);
 				},
-				function(keys, callback) {
+				function (keys, callback) {
 					db.deleteAll(keys, callback);
 				},
-				function(callback) {
+				function (callback) {
 					db.deleteAll(['pid:' + pid + ':reactions'], callback);
 				}
-			], function(err) {
+			], function (err) {
 				if (err) {
 					console.log(err.message);
 				}
