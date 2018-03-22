@@ -31,5 +31,8 @@
   "dependencies": {
     "async": "^2.1.4"
   },
+  "peerDependencies": {
+    "nodebb-plugin-emoji": "^2.2.0"
+  },
   "license": "MIT"
 }

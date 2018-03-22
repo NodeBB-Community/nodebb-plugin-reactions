@@ -6,8 +6,13 @@ var db = module.parent.require('./database');
 var SocketPlugins = module.parent.require('./socket.io/plugins');
 var websockets = module.parent.require('./socket.io/index');
 var async = require('async');
-var emojiParser = require('../nodebb-plugin-emoji-extended/lib/parser/main');
+var emojiParser = require('nodebb-plugin-emoji/build/lib/parse');
+var emojiTable = require('nodebb-plugin-emoji/build/emoji/table.json');
 var reactions = {};
+
+function parse(name) {
+	return emojiParser.buildEmoji(emojiTable[name], '');
+}
 
 reactions.init = function (params, callback) {
 
@@ -17,11 +22,8 @@ reactions.init = function (params, callback) {
 				return callback(new Error('[[error:not-logged-in]]'));
 			}
 
-			var emojiList = Object.keys(emojiParser.activeList).map(function (item) {
-				return emojiParser.activeList[item].id;
-			});
 
-			if (emojiList.indexOf(data.reaction) === -1) {
+			if (!emojiTable[data.reaction]) {
 				return callback(new Error('Invalid reaction'));
 			}
 
@@ -54,11 +56,7 @@ reactions.init = function (params, callback) {
 				return callback(new Error('[[error:not-logged-in]]'));
 			}
 
-			var emojiList = Object.keys(emojiParser.activeList).map(function (item) {
-				return emojiParser.activeList[item].id;
-			});
-
-			if (emojiList.indexOf(data.reaction) === -1) {
+			if (!emojiTable[data.reaction]) {
 				return callback(new Error('Invalid reaction'));
 			}
 
@@ -109,7 +107,7 @@ reactions.init = function (params, callback) {
 				reactionCount: results.reactionCount,
 				totalReactions: results.totalReactions,
 				usernames: results.usernames,
-				reactionImage: emojiParser.parse(':' + data.reaction + ':').replace('title="' + data.reaction + '"', '')
+				reactionImage: parse(data.reaction),
 			});
 			callback();
 		});
@@ -198,7 +196,7 @@ reactions.getReactions = function (data, callback) {
 						return user.username
 					}).join(', ');
 
-					var reactionImage = emojiParser.parse(':' + reaction.reaction + ':').replace('title="' + reaction + '"', '');
+					var reactionImage = parse(reaction.reaction);
 					var reacted = reaction.reacted ? 'reacted' : '';
 					reactionInfo = reactionInfo + '<span class="reaction ' + reacted + '" component="post/reaction" data-pid="' + post.pid + '" data-reaction="' + reaction.reaction + '" title="' + usernames + '">' + reactionImage + '<span class="reaction-emoji-count" data-count="' + reaction.memberCount + '"></span></span>';
 				});
