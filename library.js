@@ -199,7 +199,7 @@ reactions.getReactions = function (data, callback) {
 
 					var reactionImage = parse(reaction.reaction);
 					var reacted = reaction.reacted ? 'reacted' : '';
-					reactionInfo = reactionInfo + '<span class="reaction ' + reacted + '" component="post/reaction" data-pid="' + post.pid + '" data-reaction="' + reaction.reaction + '" title="' + usernames + '">' + reactionImage + '<span class="reaction-emoji-count" data-count="' + reaction.memberCount + '"></span></span>';
+					reactionInfo = reactionInfo + '<span class="reaction ' + reacted + '" component="post/reaction" data-pid="' + post.pid + '" data-reaction="' + reaction.reaction + '" title="' + usernames + '">' + reactionImage + '<small class="reaction-emoji-count" data-count="' + reaction.memberCount + '"></small></span>';
 				});
 
 				post.reactions = reactionInfo + '</span>';

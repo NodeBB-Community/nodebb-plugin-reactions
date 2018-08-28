@@ -13,14 +13,16 @@
         margin: 0 1px;
         cursor: pointer;
 
+        .emoji {
+            height: 18px;
+        }
+
         &.reacted {
             border: 1px solid @primary-color;
         }
 
         .reaction-emoji-count {
-            font-size: 12px;
-            padding: 0 2px;
-            color: #777;
+            margin-left: 5px;
 
             &:before {
                 content: attr(data-count);
