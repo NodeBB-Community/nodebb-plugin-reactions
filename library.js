@@ -8,10 +8,11 @@ var websockets = module.parent.require('./socket.io/index');
 var async = require('async');
 var emojiParser = require('nodebb-plugin-emoji/build/lib/parse');
 var emojiTable = require('nodebb-plugin-emoji/build/emoji/table.json');
+var emojiAliases = require('nodebb-plugin-emoji/build/emoji/aliases.json');
 var reactions = {};
 
 function parse(name) {
-	return emojiParser.buildEmoji(emojiTable[name], '');
+	return emojiParser.buildEmoji(emojiTable[name] || emojiTable[emojiAliases[name]], '');
 }
 
 reactions.init = function (params, callback) {
