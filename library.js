@@ -1,10 +1,10 @@
 "use strict";
 
-var meta = module.parent.require('./meta');
-var user = module.parent.require('./user');
-var db = module.parent.require('./database');
-var SocketPlugins = module.parent.require('./socket.io/plugins');
-var websockets = module.parent.require('./socket.io/index');
+var meta = require.main.require('./src/meta');
+var user = require.main.require('./src/user');
+var db = require.main.require('./src/database');
+var SocketPlugins = require.main.require('./src/socket.io/plugins');
+var websockets = require.main.require('./src/socket.io/index');
 var async = require('async');
 var emojiParser = require('nodebb-plugin-emoji/build/lib/parse');
 var emojiTable = require('nodebb-plugin-emoji/build/emoji/table.json');
