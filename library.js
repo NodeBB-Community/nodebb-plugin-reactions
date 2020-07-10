@@ -143,7 +143,9 @@ reactions.getReactions = function (data, callback) {
 		callback(null, data);
 	} else {
 		async.eachSeries(data.posts, function (post, next) {
-
+			if (!post) {
+				return setImmediate(next);
+			}
 			async.series({
 				maximumReactions: function (cb) {
 					meta.settings.get('reactions', function (err, settings) {
