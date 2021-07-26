@@ -7,9 +7,9 @@ const db = require.main.require('./src/database');
 const SocketPlugins = require.main.require('./src/socket.io/plugins');
 const websockets = require.main.require('./src/socket.io/index');
 
-const emojiParser = require.main.require('@ariastel/nodebb-plugin-emoji/build/lib/parse.js');
-const emojiTable = require.main.require('@ariastel/nodebb-plugin-emoji/build/emoji/table.json');
-const emojiAliases = require.main.require('@ariastel/nodebb-plugin-emoji/build/emoji/aliases.json');
+const emojiParser = require.main.require('nodebb-plugin-emoji/build/lib/parse.js');
+const emojiTable = require.main.require('nodebb-plugin-emoji/build/emoji/table.json');
+const emojiAliases = require.main.require('nodebb-plugin-emoji/build/emoji/aliases.json');
 
 const DEFAULT_MAX_EMOTES = 5;
 
