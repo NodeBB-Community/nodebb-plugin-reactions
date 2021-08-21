@@ -98,32 +98,34 @@ ReactionsPlugin.getReactions = async function (data) {
 
 		for (const post of data.posts) {
 
-			const maxReactionsReached = pidToIsMaxReactionsReachedMap.get(post.pid) ? ' max-reactions' : '';
+			post.maxReactionsReached = pidToIsMaxReactionsReachedMap.get(post.pid);
+			post.reactions = [];
 
-			let reactionInfo = `<span class="reactions" component="post/reactions" data-pid="${post.pid}">`;
-			reactionInfo = reactionInfo + `<span class="reaction-add${maxReactionsReached}" component="post/reaction/add" data-pid="${post.pid}" title="Add reaction"><i class="fa fa-plus-square-o"></i></span>`;
-
-			if (pidToReactionsMap.has(post.pid)) {
-				for (const reaction of pidToReactionsMap.get(post.pid)) {
-
-					const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
-					if (!reactionSetToUsersMap.has(reactionSet)) {
-						continue;
-					}
-
-					const usersData = reactionSetToUsersMap.get(reactionSet);
-					const usersCount = usersData.length;
-					const usernames = usersData.map(userData => userData.username).join(', ');
-					const uids = usersData.map(userData => userData.uid)
-
-					const reactionImage = parse(reaction);
-					const reacted = uids.includes(data.uid) ? 'reacted' : '';
-
-					reactionInfo = reactionInfo + `<span class="reaction ${reacted}" component="post/reaction" data-pid="${post.pid}" data-reaction="${reaction}" title="${usernames}">${reactionImage}<small class="reaction-emoji-count" data-count="${usersCount}"></small></span>`;
-				}
+			if (!pidToReactionsMap.has(post.pid)) {
+				continue;
 			}
 
-			post.reactions = reactionInfo + '</span>';
+			for (const reaction of pidToReactionsMap.get(post.pid)) {
+
+				const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
+				if (!reactionSetToUsersMap.has(reactionSet)) {
+					continue;
+				}
+
+				const usersData = reactionSetToUsersMap.get(reactionSet);
+				const reactionCount = usersData.length;
+				const reactedUsernames = usersData.map(userData => userData.username).join(', ');
+				const reactedUids = usersData.map(userData => userData.uid)
+
+				post.reactions.push({
+					pid: post.pid,
+					reacted: reactedUids.includes(data.uid),
+					reaction,
+					usernames: reactedUsernames,
+					reactionImage: parse(reaction),
+					reactionCount,
+				});
+			}
 		}
 	} catch (e) {
 		console.error(e);
@@ -134,9 +136,7 @@ ReactionsPlugin.getReactions = async function (data) {
 
 ReactionsPlugin.onReply = async function (data) {
 	if (data.uid !== 0) {
-		let reactionInfo = `<span class="reactions" component="post/reactions" data-pid="${data.pid}">`;
-		reactionInfo = reactionInfo + '<span class="reaction-add" component="post/reaction/add" data-pid="' + data.pid + '" title="Add reaction"><i class="fa fa-plus-square-o"></i></span>';
-		data.reactions = reactionInfo + '</span>';
+		data.reactions = [];
 	}
 	return data;
 }
