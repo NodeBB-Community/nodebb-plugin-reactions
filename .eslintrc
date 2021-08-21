@@ -1,0 +1,6 @@
+{
+  "extends": "nodebb/lib",
+  "rules": {
+    "no-continue": "off"
+  }
+}

@@ -32,5 +32,13 @@
   "peerDependencies": {
     "nodebb-plugin-emoji": "^3.5.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^7.32.0",
+    "eslint-config-nodebb": "0.0.2",
+    "eslint-plugin-import": "^2.24.1"
+  },
+  "scripts": {
+    "lint": "eslint ."
+  }
 }

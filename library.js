@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 const _ = require.main.require('lodash');
 const meta = require.main.require('./src/meta');
@@ -20,7 +20,6 @@ function parse(name) {
 const ReactionsPlugin = {};
 
 ReactionsPlugin.init = async function (params) {
-
 	function renderAdmin(_, res) {
 		res.render('admin/plugins/reactions', {});
 	}
@@ -33,7 +32,7 @@ ReactionsPlugin.addAdminNavigation = async function (header) {
 	header.plugins.push({
 		route: '/plugins/reactions',
 		icon: 'fa-paint-brush',
-		name: '[[reactions:reactions]]'
+		name: '[[reactions:reactions]]',
 	});
 	return header;
 };
@@ -42,13 +41,13 @@ ReactionsPlugin.getPluginConfig = async function (config) {
 	try {
 		const settings = await meta.settings.get('reactions');
 		config.maximumReactions = settings.maximumReactions ? parseInt(settings.maximumReactions, 10) : DEFAULT_MAX_EMOTES;
-	} finally {
-		return config;
+	} catch (e) {
+		console.error(e);
 	}
+	return config;
 };
 
 ReactionsPlugin.getReactions = async function (data) {
-
 	if (data.uid === 0) {
 		return data;
 	}
@@ -97,52 +96,44 @@ ReactionsPlugin.getReactions = async function (data) {
 		}
 
 		for (const post of data.posts) {
-
 			post.maxReactionsReached = pidToIsMaxReactionsReachedMap.get(post.pid);
 			post.reactions = [];
 
-			if (!pidToReactionsMap.has(post.pid)) {
-				continue;
-			}
+			if (pidToReactionsMap.has(post.pid)) {
+				for (const reaction of pidToReactionsMap.get(post.pid)) {
+					const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
+					if (reactionSetToUsersMap.has(reactionSet)) {
+						const usersData = reactionSetToUsersMap.get(reactionSet);
+						const reactionCount = usersData.length;
+						const reactedUsernames = usersData.map(userData => userData.username).join(', ');
+						const reactedUids = usersData.map(userData => userData.uid);
 
-			for (const reaction of pidToReactionsMap.get(post.pid)) {
-
-				const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
-				if (!reactionSetToUsersMap.has(reactionSet)) {
-					continue;
+						post.reactions.push({
+							pid: post.pid,
+							reacted: reactedUids.includes(data.uid),
+							reaction,
+							usernames: reactedUsernames,
+							reactionImage: parse(reaction),
+							reactionCount,
+						});
+					}
 				}
-
-				const usersData = reactionSetToUsersMap.get(reactionSet);
-				const reactionCount = usersData.length;
-				const reactedUsernames = usersData.map(userData => userData.username).join(', ');
-				const reactedUids = usersData.map(userData => userData.uid)
-
-				post.reactions.push({
-					pid: post.pid,
-					reacted: reactedUids.includes(data.uid),
-					reaction,
-					usernames: reactedUsernames,
-					reactionImage: parse(reaction),
-					reactionCount,
-				});
 			}
 		}
 	} catch (e) {
 		console.error(e);
-	} finally {
-		return data;
 	}
-}
+	return data;
+};
 
 ReactionsPlugin.onReply = async function (data) {
 	if (data.uid !== 0) {
 		data.reactions = [];
 	}
 	return data;
-}
+};
 
 ReactionsPlugin.deleteReactions = async function (pid) {
-
 	const reactions = await db.getSetMembers(`pid:${pid}:reactions`);
 	if (reactions.length > 0) {
 		return;
@@ -157,15 +148,14 @@ ReactionsPlugin.deleteReactions = async function (pid) {
 	} catch (e) {
 		console.error(e);
 	}
-}
+};
 
 async function sendEvent(data, eventName) {
-
 	try {
 		const [reactionCount, totalReactions, uids] = await Promise.all([
 			db.setCount(`pid:${data.pid}:reaction:${data.reaction}`),
 			db.setCount(`pid:${data.pid}:reactions`),
-			db.getSetMembers(`pid:${data.pid}:reaction:${data.reaction}`)
+			db.getSetMembers(`pid:${data.pid}:reaction:${data.reaction}`),
 		]);
 
 		const userdata = await user.getUsersFields(uids, ['uid', 'username']);
@@ -175,7 +165,7 @@ async function sendEvent(data, eventName) {
 			await db.setRemove(`pid:${data.pid}:reactions`, data.reaction);
 		}
 
-		await websockets.in('topic_' + data.tid).emit(eventName, {
+		await websockets.in(`topic_${data.tid}`).emit(eventName, {
 			pid: data.pid,
 			uid: data.uid,
 			reaction: data.reaction,
@@ -191,7 +181,6 @@ async function sendEvent(data, eventName) {
 
 SocketPlugins.reactions = {
 	addPostReaction: async function (socket, data) {
-
 		if (!socket.uid) {
 			throw new Error('[[error:not-logged-in]]');
 		}
@@ -208,7 +197,7 @@ SocketPlugins.reactions = {
 
 			const [totalReactions, isMember] = await Promise.all([
 				db.setCount(`pid:${data.pid}:reactions`),
-				db.isSetMember(`pid:${data.pid}:reactions`, data.reaction)
+				db.isSetMember(`pid:${data.pid}:reactions`, data.reaction),
 			]);
 
 			if (!isMember && totalReactions >= maximumReactions) {
@@ -216,8 +205,8 @@ SocketPlugins.reactions = {
 			}
 
 			await Promise.all([
-				db.setAdd('pid:' + data.pid + ':reactions', data.reaction),
-				db.setAdd('pid:' + data.pid + ':reaction:' + data.reaction, socket.uid)
+				db.setAdd(`pid:${data.pid}:reactions`, data.reaction),
+				db.setAdd(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
 			]);
 
 			await sendEvent(data, 'event:reactions.addPostReaction');
@@ -226,7 +215,6 @@ SocketPlugins.reactions = {
 		}
 	},
 	removePostReaction: async function (socket, data) {
-
 		if (!socket.uid) {
 			throw new Error('[[error:not-logged-in]]');
 		}
@@ -240,7 +228,7 @@ SocketPlugins.reactions = {
 		try {
 			await db.setRemove(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid);
 
-			const reactionCount = await db.setCount('pid:' + data.pid + ':reaction:' + data.reaction);
+			const reactionCount = await db.setCount(`pid:${data.pid}:reaction:${data.reaction}`);
 			if (reactionCount === 0) {
 				await db.setRemove(`pid:${data.pid}:reactions`, data.reaction);
 			}
@@ -249,7 +237,7 @@ SocketPlugins.reactions = {
 		} catch (e) {
 			console.error(e);
 		}
-	}
+	},
 };
 
 
