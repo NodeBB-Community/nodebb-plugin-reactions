@@ -33,7 +33,7 @@ ReactionsPlugin.addAdminNavigation = async function (header) {
 	header.plugins.push({
 		route: '/plugins/reactions',
 		icon: 'fa-paint-brush',
-		name: 'Reactions'
+		name: '[[reactions:reactions]]'
 	});
 	return header;
 };
@@ -197,7 +197,7 @@ SocketPlugins.reactions = {
 		}
 
 		if (!emojiTable[data.reaction]) {
-			throw new Error('Invalid reaction');
+			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
 		data.uid = socket.uid;
@@ -212,7 +212,7 @@ SocketPlugins.reactions = {
 			]);
 
 			if (!isMember && totalReactions >= maximumReactions) {
-				throw new Error('Maximum reactions reached');
+				throw new Error('[[reactions:error.maximum-reached]]');
 			}
 
 			await Promise.all([
@@ -232,7 +232,7 @@ SocketPlugins.reactions = {
 		}
 
 		if (!emojiTable[data.reaction]) {
-			throw new Error('Invalid reaction');
+			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
 		data.uid = socket.uid;

@@ -1,0 +1,6 @@
+{
+  "reactions": "Реакции",
+  "add-reaction": "Добавить реакцию",
+  "error.invalid-reaction": "Некорректная реакция",
+  "error.maximum-reached": "Максимальное количество реакций достигнуто"
+}

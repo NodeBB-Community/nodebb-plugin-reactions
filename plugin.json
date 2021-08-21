@@ -5,6 +5,7 @@
     "url": "https://github.com/pichalite/nodebb-plugin-reactions",
     "library": "./library.js",
     "templates": "templates",
+    "languages": "languages",
     "less": [
         "less/reactions.less"
     ],
