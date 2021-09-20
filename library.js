@@ -4,8 +4,9 @@ const _ = require.main.require('lodash');
 const meta = require.main.require('./src/meta');
 const user = require.main.require('./src/user');
 const db = require.main.require('./src/database');
-const SocketPlugins = require.main.require('./src/socket.io/plugins');
+const routesHelpers = require.main.require('./src/routes/helpers');
 const websockets = require.main.require('./src/socket.io/index');
+const SocketPlugins = require.main.require('./src/socket.io/plugins');
 
 const emojiParser = require.main.require('nodebb-plugin-emoji/build/lib/parse.js');
 const emojiTable = require.main.require('nodebb-plugin-emoji/build/emoji/table.json');
@@ -23,9 +24,7 @@ ReactionsPlugin.init = async function (params) {
 	function renderAdmin(_, res) {
 		res.render('admin/plugins/reactions', {});
 	}
-
-	params.router.get('/admin/plugins/reactions', params.middleware.admin.buildHeader, renderAdmin);
-	params.router.get('/api/admin/plugins/reactions', renderAdmin);
+	routesHelpers.setupAdminPageRoute(params.router, '/admin/plugins/reactions', params.middleware, [], renderAdmin);
 };
 
 ReactionsPlugin.addAdminNavigation = async function (header) {
