@@ -1,0 +1,6 @@
+{
+  "reactions": "Reactions",
+  "add-reaction": "Add reaction",
+  "error.invalid-reaction": "Invalid reaction",
+  "error.maximum-reached": "Maximum reactions reached"
+}
