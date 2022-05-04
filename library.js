@@ -132,21 +132,19 @@ ReactionsPlugin.onReply = async function (data) {
 	return data;
 };
 
-ReactionsPlugin.deleteReactions = async function (pid) {
-	const reactions = await db.getSetMembers(`pid:${pid}:reactions`);
-	if (reactions.length > 0) {
-		return;
-	}
+ReactionsPlugin.deleteReactions = async function (hookData) {
+	const pids = hookData.posts.map(post => post && post.pid);
+	const pidsReactions = await db.getSetsMembers(pids.map(pid => `pid:${pid}:reactions`));
 
-	const keys = [
-		...reactions.map(reaction => `pid:${pid}:reaction:${reaction}`),
-		`pid:${pid}:reactions`,
-	];
-	try {
-		await db.deleteAll(keys);
-	} catch (e) {
-		console.error(e);
-	}
+	const keys = [];
+	pidsReactions.forEach((reactions, index) => {
+		keys.push(
+			...reactions.map(reaction => `pid:${pid}:reaction:${reaction}`),
+			`pid:${pids[index]}:reactions`,
+		)
+	});
+
+	await db.deleteAll(keys);
 };
 
 async function sendEvent(data, eventName) {

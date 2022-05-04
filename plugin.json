@@ -10,18 +10,18 @@
         "less/reactions.less"
     ],
     "scripts": [
-        "lib/client.js"
+        "public/client.js"
     ],
-    "acpScripts": [
-        "lib/admin.js"
-    ],
+    "modules": {
+        "../admin/plugins/reactions.js": "./public/admin.js"
+    },
     "hooks": [
         {
             "hook": "static:app.load", "method": "init"
         },
         {
             "hook": "filter:admin.header.build", "method": "addAdminNavigation"
-        }, 
+        },
         {
             "hook": "filter:config.get", "method": "getPluginConfig"
         },
@@ -32,7 +32,7 @@
             "hook": "filter:post.get", "method": "onReply"
         },
         {
-            "hook": "action:post.purge", "method": "deleteReactions"
+            "hook": "action:posts.purge", "method": "deleteReactions"
         }
     ]
 }

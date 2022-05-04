@@ -6,7 +6,7 @@ $(document).ready(function () {
 	function setupPostReactions() {
 		require(['hooks'], function (hooks) {
 			hooks.on('action:ajaxify.end', function (data) {
-				if (data.url && data.url.match('^topic/')) {
+				if (ajaxify.data.template.topic) {
 					setupReactionSockets();
 					createReactionTooltips();
 					$('[component="topic"]').on('click', '[component="post/reaction"]', function () {

@@ -1,14 +1,13 @@
 'use strict';
 
-define('admin/plugins/reactions', ['settings'], function (Settings) {
+define('admin/plugins/reactions', ['settings',  'alerts'], function (Settings, alerts) {
 	var ACP = {};
-
 	ACP.init = function () {
 		Settings.load('reactions', $('.reactions-settings'));
 
 		$('#save').on('click', function () {
 			Settings.save('reactions', $('.reactions-settings'), function () {
-				app.alert({
+				alerts.alert({
 					type: 'success',
 					alert_id: 'reactions-saved',
 					title: 'Settings Saved',
