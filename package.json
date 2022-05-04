@@ -1,5 +1,5 @@
 {
-  "name": "nodebb-plugin-reactions",
+  "name": "@nodebb/nodebb-plugin-reactions",
   "version": "1.0.0",
   "nbbpm": {
     "compatibility": "^1.19.7"
@@ -8,7 +8,7 @@
   "main": "library.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pichalite/nodebb-plugin-reactions.git"
+    "url": "https://github.com/NodeBB-Community/nodebb-plugin-reactions.git"
   },
   "keywords": [
     "nodebb",
@@ -20,13 +20,18 @@
     "email": "pichalite.com@gmail.com"
   },
   "bugs": {
-    "url": "https://github.com/pichalite/nodebb-plugin-reactions/issues"
+    "url": "https://github.com/NodeBB-Community/nodebb-plugin-reactions/issues"
   },
   "maintainers": [
     {
       "name": "pichalite",
       "email": "pichalite.com@gmail.com"
-    }
+    },
+    {
+      "name": "Barış Soner Uşaklı",
+      "email": "baris@nodebb.org",
+      "url": "https://github.com/barisusakli"
+  }
   ],
   "dependencies": {},
   "peerDependencies": {
