@@ -55,7 +55,7 @@ ReactionsPlugin.getReactions = async function (data) {
 		const settings = await meta.settings.get('reactions');
 		const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
 
-		const pids = data.posts.map(post => parseInt(post.pid, 10));
+		const pids = data.posts.map(post => post && parseInt(post.pid, 10));
 		const allReactionsForPids = await db.getSetsMembers(pids.map(pid => `pid:${pid}:reactions`));
 
 		const pidToIsMaxReactionsReachedMap = new Map(); // pid -> IsMaxReactionsReached (boolean)
