@@ -3,6 +3,7 @@
 const _ = require.main.require('lodash');
 const meta = require.main.require('./src/meta');
 const user = require.main.require('./src/user');
+const posts = require.main.require('./src/posts');
 const db = require.main.require('./src/database');
 const routesHelpers = require.main.require('./src/routes/helpers');
 const websockets = require.main.require('./src/socket.io/index');
@@ -139,9 +140,9 @@ ReactionsPlugin.deleteReactions = async function (hookData) {
 	const keys = [];
 	pidsReactions.forEach((reactions, index) => {
 		keys.push(
-			...reactions.map(reaction => `pid:${pid}:reaction:${reaction}`),
+			...reactions.map(reaction => `pid:${pids[index]}:reaction:${reaction}`),
 			`pid:${pids[index]}:reactions`,
-		)
+		);
 	});
 
 	await db.deleteAll(keys);
@@ -176,6 +177,20 @@ async function sendEvent(data, eventName) {
 	}
 }
 
+async function getReactionReputation(reaction) {
+	const settings = await meta.settings.get('reactions');
+	const reactionsReps = settings['reaction-reputations'] || [];
+	const foundReaction = reactionsReps.find(r => r.reaction === reaction);
+	return foundReaction ? parseInt(foundReaction.reputation, 10) || 0 : 0;
+}
+
+async function giveOwnerReactionReputation(reactionReputation, pid) {
+	const ownerUid = await posts.getPostField(pid, 'uid');
+	if (parseInt(ownerUid, 10) > 0) {
+		await user.incrementUserReputationBy(ownerUid, reactionReputation);
+	}
+}
+
 SocketPlugins.reactions = {
 	addPostReaction: async function (socket, data) {
 		if (!socket.uid) {
@@ -191,10 +206,11 @@ SocketPlugins.reactions = {
 		try {
 			const settings = await meta.settings.get('reactions');
 			const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
-
-			const [totalReactions, isMember] = await Promise.all([
+			const [totalReactions, isMember, alreadyReacted, reactionReputation] = await Promise.all([
 				db.setCount(`pid:${data.pid}:reactions`),
 				db.isSetMember(`pid:${data.pid}:reactions`, data.reaction),
+				db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
+				getReactionReputation(data.reaction),
 			]);
 
 			if (!isMember && totalReactions >= maximumReactions) {
@@ -205,6 +221,10 @@ SocketPlugins.reactions = {
 				db.setAdd(`pid:${data.pid}:reactions`, data.reaction),
 				db.setAdd(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
 			]);
+
+			if (!alreadyReacted && reactionReputation > 0) {
+				await giveOwnerReactionReputation(reactionReputation, data.pid);
+			}
 
 			await sendEvent(data, 'event:reactions.addPostReaction');
 		} catch (e) {
@@ -223,13 +243,21 @@ SocketPlugins.reactions = {
 		data.uid = socket.uid;
 
 		try {
-			await db.setRemove(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid);
+			const [hasReacted, reactionReputation] = await Promise.all([
+				db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
+				getReactionReputation(data.reaction),
+			]);
+			if (hasReacted) {
+				await db.setRemove(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid);
+			}
 
 			const reactionCount = await db.setCount(`pid:${data.pid}:reaction:${data.reaction}`);
 			if (reactionCount === 0) {
 				await db.setRemove(`pid:${data.pid}:reactions`, data.reaction);
 			}
-
+			if (hasReacted && reactionReputation > 0) {
+				await giveOwnerReactionReputation(-reactionReputation, data.pid);
+			}
 			await sendEvent(data, 'event:reactions.removePostReaction');
 		} catch (e) {
 			console.error(e);
