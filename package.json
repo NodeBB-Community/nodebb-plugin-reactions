@@ -1,6 +1,6 @@
 {
   "name": "@nodebb/nodebb-plugin-reactions",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "nbbpm": {
     "compatibility": "^1.19.7"
   },
@@ -31,7 +31,7 @@
       "name": "Barış Soner Uşaklı",
       "email": "baris@nodebb.org",
       "url": "https://github.com/barisusakli"
-  }
+    }
   ],
   "dependencies": {},
   "peerDependencies": {
