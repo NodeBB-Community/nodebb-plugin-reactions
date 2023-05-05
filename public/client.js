@@ -4,8 +4,8 @@ $(document).ready(function () {
 	setupPostReactions();
 
 	function setupPostReactions() {
-		require(['hooks'], function (hooks) {
-			hooks.on('action:ajaxify.end', function (data) {
+		require(['hooks', 'alerts'], function (hooks, alerts) {
+			hooks.on('action:ajaxify.end', function () {
 				if (ajaxify.data.template.topic) {
 					setupReactionSockets();
 					createReactionTooltips();
@@ -22,7 +22,7 @@ $(document).ready(function () {
 							reaction: reaction,
 						}, function (err) {
 							if (err) {
-								app.alertError(err.message);
+								alerts.error(err.message);
 							}
 						});
 					});
@@ -41,7 +41,7 @@ $(document).ready(function () {
 									reaction: name,
 								}, function (err) {
 									if (err) {
-										app.alertError(err.message);
+										alerts.error(err.message);
 										throw err;
 									}
 
