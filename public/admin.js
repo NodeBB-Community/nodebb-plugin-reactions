@@ -45,6 +45,7 @@ define('admin/plugins/reactions', [
 					alert_id: 'reactions-saved',
 					title: 'Settings Saved',
 					message: 'Reactions plugin settings saved',
+					timeout: 3000
 				});
 			});
 		});

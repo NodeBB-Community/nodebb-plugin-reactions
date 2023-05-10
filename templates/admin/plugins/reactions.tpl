@@ -16,7 +16,7 @@
 			</p>
 			<div class="form-group" data-type="sorted-list" data-sorted-list="reaction-reputations" data-item-template="admin/plugins/reactions/partials/sorted-list/emoji-item" data-form-template="admin/plugins/reactions/partials/sorted-list/emoji-form">
 				<ul data-type="list" class="list-group"></ul>
-				<button type="button" data-type="add" class="btn btn-info">[[reactions:settings.reaction-reputations.add]]</button>
+				<button type="button" data-type="add" class="btn btn-info mt-2">[[reactions:settings.reaction-reputations.add]]</button>
 			</div>
 		</div>
 	</div>
