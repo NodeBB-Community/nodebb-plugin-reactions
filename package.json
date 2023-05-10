@@ -2,7 +2,7 @@
   "name": "@nodebb/nodebb-plugin-reactions",
   "version": "1.0.3",
   "nbbpm": {
-    "compatibility": "^1.19.7"
+    "compatibility": "^3.0.0"
   },
   "description": "Reactions plugin for NodeBB",
   "main": "library.js",
@@ -33,15 +33,14 @@
       "url": "https://github.com/barisusakli"
     }
   ],
-  "dependencies": {},
   "peerDependencies": {
-    "nodebb-plugin-emoji": "^4.0.0"
+    "nodebb-plugin-emoji": "^5.0.0"
   },
   "license": "MIT",
   "devDependencies": {
-    "eslint": "^7.32.0",
-    "eslint-config-nodebb": "0.0.2",
-    "eslint-plugin-import": "^2.24.1"
+    "eslint": "^8.40.0",
+    "eslint-config-nodebb": "^0.2.1",
+    "eslint-plugin-import": "^2.27.5"
   },
   "scripts": {
     "lint": "eslint ."

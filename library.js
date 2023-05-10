@@ -203,33 +203,29 @@ SocketPlugins.reactions = {
 
 		data.uid = socket.uid;
 
-		try {
-			const settings = await meta.settings.get('reactions');
-			const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
-			const [totalReactions, isMember, alreadyReacted, reactionReputation] = await Promise.all([
-				db.setCount(`pid:${data.pid}:reactions`),
-				db.isSetMember(`pid:${data.pid}:reactions`, data.reaction),
-				db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
-				getReactionReputation(data.reaction),
-			]);
+		const settings = await meta.settings.get('reactions');
+		const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
+		const [totalReactions, isMember, alreadyReacted, reactionReputation] = await Promise.all([
+			db.setCount(`pid:${data.pid}:reactions`),
+			db.isSetMember(`pid:${data.pid}:reactions`, data.reaction),
+			db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
+			getReactionReputation(data.reaction),
+		]);
 
-			if (!isMember && totalReactions >= maximumReactions) {
-				throw new Error('[[reactions:error.maximum-reached]]');
-			}
-
-			await Promise.all([
-				db.setAdd(`pid:${data.pid}:reactions`, data.reaction),
-				db.setAdd(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
-			]);
-
-			if (!alreadyReacted && reactionReputation > 0) {
-				await giveOwnerReactionReputation(reactionReputation, data.pid);
-			}
-
-			await sendEvent(data, 'event:reactions.addPostReaction');
-		} catch (e) {
-			console.error(e);
+		if (!isMember && totalReactions >= maximumReactions) {
+			throw new Error('[[reactions:error.maximum-reached]]');
 		}
+
+		await Promise.all([
+			db.setAdd(`pid:${data.pid}:reactions`, data.reaction),
+			db.setAdd(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
+		]);
+
+		if (!alreadyReacted && reactionReputation > 0) {
+			await giveOwnerReactionReputation(reactionReputation, data.pid);
+		}
+
+		await sendEvent(data, 'event:reactions.addPostReaction');
 	},
 	removePostReaction: async function (socket, data) {
 		if (!socket.uid) {

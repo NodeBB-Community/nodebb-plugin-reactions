@@ -80,7 +80,7 @@ $(document).ready(function () {
 		var reactionEl = $('[component="post/reaction"][data-pid="' + data.pid + '"][data-reaction="' + data.reaction + '"]');
 
 		if (parseInt(data.reactionCount, 10) === 0) {
-			reactionEl.tooltip('destroy');
+			reactionEl.tooltip('dispose');
 			reactionEl.remove();
 		}
 

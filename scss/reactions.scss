@@ -1,0 +1,29 @@
+.reactions {
+	.reaction {
+		border: 1px solid #9ddefe;
+		display: inline-block;
+		border-radius: 4px;
+		padding: 2px 4px;
+		margin: 0 1px;
+		cursor: pointer;
+		.emoji {
+			height: 18px;
+		}
+		&.reacted {
+			border: 1px solid #039BE5;
+		}
+		.reaction-emoji-count {
+			margin-left: 5px;
+			&:before {
+				content: attr(data-count);
+			}
+		}
+	}
+	.reaction-add {
+		margin-right: 10px;
+		cursor: pointer;
+		&.max-reactions {
+			display: none !important;
+		}
+	}
+}
