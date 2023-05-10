@@ -1,6 +1,15 @@
 {
-  "reactions": "תגובות",
+  "reactions": "Reactions",
   "add-reaction": "הוסף תגובה",
   "error.invalid-reaction": "תגובה לא חוקית",
-  "error.maximum-reached": "הגעת למספר התגובות המקסימלי לפוסט"
+  "error.maximum-reached": "הגעת למספר התגובות המקסימלי לפוסט",
+  "settings.title": "הגדרות תגובות",
+  "settings.max-reactions-per-post": "מספר התגובות המקסימלי לפוסט",
+  "settings.reaction-reputations": "מוניטין תגובה (אופציונלי)",
+  "settings.reaction-reputations-help": "אתה יכול להקצות מוניטין לתגובות מסוימות. כאשר התגובה נוספת לפוסט, בעל הפוסט יקבל את המוניטין שנקבע.",
+  "settings.reaction-reputations.add": "הוסף כלל",
+  "settings.reaction-reputations.reaction": "תגובה",
+  "settings.reaction-reputations.reputation": "מוניטין",
+  "settings.reaction-reputations.remove": "הסר",
+  "settings.reaction-reputations.edit": "ערוך"
 }
