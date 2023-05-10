@@ -6,8 +6,8 @@
     "library": "./library.js",
     "templates": "templates",
     "languages": "languages",
-    "less": [
-        "less/reactions.less"
+    "scss": [
+        "scss/reactions.scss"
     ],
     "scripts": [
         "public/client.js"
