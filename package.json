@@ -2,7 +2,7 @@
   "name": "@nodebb/nodebb-plugin-reactions",
   "version": "1.0.3",
   "nbbpm": {
-    "compatibility": "^1.19.7"
+    "compatibility": "^3.0.0"
   },
   "description": "Reactions plugin for NodeBB",
   "main": "library.js",
@@ -35,7 +35,7 @@
   ],
   "dependencies": {},
   "peerDependencies": {
-    "nodebb-plugin-emoji": "^4.0.0"
+    "nodebb-plugin-emoji": "^5.0.0"
   },
   "license": "MIT",
   "devDependencies": {
