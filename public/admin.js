@@ -1,7 +1,7 @@
 'use strict';
 
 define('admin/plugins/reactions', [
-	'settings',  'alerts', 'hooks', 'emoji-dialog', 'emoji',
+	'settings', 'alerts', 'hooks', 'emoji-dialog', 'emoji',
 ], function (Settings, alerts, hooks, emojiDialog, emoji) {
 	var ACP = {};
 	ACP.init = function () {
@@ -16,7 +16,7 @@ define('admin/plugins/reactions', [
 			if (reactionEl.length) {
 				const reaction = reactionEl.attr('data-reaction');
 				if (reaction) {
-					const foundEmoji = emoji.table[reaction]
+					const foundEmoji = emoji.table[reaction];
 					if (foundEmoji) {
 						reactionEl.html(emoji.buildEmoji(foundEmoji));
 					}
@@ -45,7 +45,7 @@ define('admin/plugins/reactions', [
 					alert_id: 'reactions-saved',
 					title: 'Settings Saved',
 					message: 'Reactions plugin settings saved',
-					timeout: 3000
+					timeout: 3000,
 				});
 			});
 		});
