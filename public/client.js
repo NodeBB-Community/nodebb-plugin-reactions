@@ -74,7 +74,7 @@ $(document).ready(function () {
 	}
 
 	function updateReactionCount(data) {
-		var maxReactionsReached = parseInt(data.totalReactions, 10) >= config.maximumReactions;
+		var maxReactionsReached = parseInt(data.totalReactions, 10) > config.maximumReactions;
 		$('[component="post/reaction/add"][data-pid="' + data.pid + '"]').toggleClass('max-reactions', maxReactionsReached);
 
 		var reactionEl = $('[component="post/reaction"][data-pid="' + data.pid + '"][data-reaction="' + data.reaction + '"]');

@@ -5,7 +5,7 @@
   "error.maximum-reached": "Maximum reactions reached",
   "error.maximum-per-user-per-post-reached": "Maximum reactions per user per post reached",
   "settings.title": "Reactions plugin settings",
-  "settings.max-reactions-per-post": "Maximum unique reactions per post (0 for unlimited)",
+  "settings.max-reactions-per-post": "Maximum unique reactions per post (0 for unlimited, default: 4)",
   "settings.max-reactions-per-user-per-post": "Maximum reactions per user per post (0 for unlimited)",
   "settings.max-reactions-per-user-per-post-help": "The limit is enforced only when adding a new reaction and not when joining an existing reaction.",
   "settings.reaction-reputations": "Reaction Reputations (Optional)",

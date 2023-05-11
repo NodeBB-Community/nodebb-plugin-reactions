@@ -71,7 +71,7 @@ ReactionsPlugin.getReactions = async function (data) {
 
 				if (reactionsList && reactionsList.length > 0) {
 					pidToReactionsMap.set(pid, reactionsList);
-					pidToIsMaxReactionsReachedMap.set(pid, reactionsCount >= maximumReactions);
+					pidToIsMaxReactionsReachedMap.set(pid, reactionsCount > maximumReactions);
 					reactionSets = reactionSets.concat(reactionsList.map(reaction => `pid:${pid}:reaction:${reaction}`));
 				}
 			} catch (e) {
@@ -223,7 +223,7 @@ SocketPlugins.reactions = {
 				const userPostReactions = await db.isMemberOfSets(emojiesInPost.map(emojiName => `pid:${data.pid}:reaction:${emojiName}`), socket.uid);
 				const userPostReactionCount = userPostReactions.filter(Boolean).length;
 				if (userPostReactionCount > maximumReactionsPerUserPerPost) {
-					throw new Error(`[[reactions:error.maximum-per-user-per-post-reached]] (${maximumReactionsPerUserPerPost})`
+					throw new Error(`[[reactions:error.maximum-per-user-per-post-reached]] (${maximumReactionsPerUserPerPost})`);
 				}
 			}
 		}
