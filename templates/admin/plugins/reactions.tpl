@@ -4,13 +4,20 @@
 		<div class="col-sm-10 col-xs-12">
 			<div class="form-group">
 				<label>[[reactions:settings.max-reactions-per-post]]</label>
-				<input type="text" class="form-control" id="maximumReactions" name="maximumReactions">
+				<input type="number" min="0" class="form-control" id="maximumReactions" name="maximumReactions">
+
+				<label>[[reactions:settings.max-reactions-per-user-per-post]]</label>
+				<input type="number" min="0" class="form-control" id="maximumReactionsPerUserPerPost" name="maximumReactionsPerUserPerPost">
+				<p class="help-text">
+					[[reactions:settings.max-reactions-per-user-per-post-help]]
+				</p>
 			</div>
 		</div>
 	</div>
-	<div class="row">
+
+	<div class="row mt-3">
 		<div class="col-sm-2 col-xs-12 settings-header">[[reactions:settings.reaction-reputations]]</div>
-		<div class="col-sm-10 col-xs-12 mt-2">
+		<div class="col-sm-10 col-xs-12">
 			<p class="help-text">
 				[[reactions:settings.reaction-reputations-help]]
 			</p>

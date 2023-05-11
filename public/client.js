@@ -74,10 +74,10 @@ $(document).ready(function () {
 	}
 
 	function updateReactionCount(data) {
-		var maxReactionsReached = parseInt(data.totalReactions, 10) >= config.maximumReactions;
+		var maxReactionsReached = parseInt(data.totalReactions, 10) > config.maximumReactions;
 		$('[component="post/reaction/add"][data-pid="' + data.pid + '"]').toggleClass('max-reactions', maxReactionsReached);
 
-		var reactionEl = $('[component="post/reaction"][data-pid="' + data.pid + '"][data-reaction="' + data.reaction + '"]');
+		var reactionEl = $(`[component="post/reaction"][data-pid="${data.pid}"][data-reaction="${data.reaction}"]`);
 
 		if (parseInt(data.reactionCount, 10) === 0) {
 			reactionEl.tooltip('dispose');
@@ -94,21 +94,23 @@ $(document).ready(function () {
 				reactionImage: data.reactionImage,
 			}, function (html) {
 				$('[component="post/reactions"][data-pid="' + data.pid + '"]').append(html);
-				createReactionTooltips();
 			});
 		} else {
 			reactionEl.find('.reaction-emoji-count').attr('data-count', data.reactionCount);
-			reactionEl.attr('data-original-title', data.usernames);
+			reactionEl.attr('data-bs-original-title', data.usernames);
+			reactionEl.attr('aria-label', data.usernames);
 			reactionEl.toggleClass('reacted', !(parseInt(data.uid, 10) === app.user.uid));
 		}
+		createReactionTooltips();
 	}
 
 	function createReactionTooltips() {
 		$('.reaction, .reaction-add').each(function () {
 			if (!utils.isTouchDevice()) {
+				$(this).tooltip('dispose');
 				$(this).tooltip({
 					placement: 'top',
-					title: $(this).attr('title'),
+					title: $(this).attr('title') || $(this).attr('data-bs-original-title'),
 				});
 			}
 		});

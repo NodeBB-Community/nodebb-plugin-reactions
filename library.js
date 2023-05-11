@@ -13,7 +13,7 @@ const emojiParser = require.main.require('nodebb-plugin-emoji/build/lib/parse.js
 const emojiTable = require.main.require('nodebb-plugin-emoji/build/emoji/table.json');
 const emojiAliases = require.main.require('nodebb-plugin-emoji/build/emoji/aliases.json');
 
-const DEFAULT_MAX_EMOTES = 5;
+const DEFAULT_MAX_EMOTES = 4;
 
 function parse(name) {
 	return emojiParser.buildEmoji(emojiTable[name] || emojiTable[emojiAliases[name]], '');
@@ -71,7 +71,7 @@ ReactionsPlugin.getReactions = async function (data) {
 
 				if (reactionsList && reactionsList.length > 0) {
 					pidToReactionsMap.set(pid, reactionsList);
-					pidToIsMaxReactionsReachedMap.set(pid, reactionsCount >= maximumReactions);
+					pidToIsMaxReactionsReachedMap.set(pid, reactionsCount > maximumReactions);
 					reactionSets = reactionSets.concat(reactionsList.map(reaction => `pid:${pid}:reaction:${reaction}`));
 				}
 			} catch (e) {
@@ -205,16 +205,29 @@ SocketPlugins.reactions = {
 
 		const settings = await meta.settings.get('reactions');
 		const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
-		const [totalReactions, isMember, alreadyReacted, reactionReputation] = await Promise.all([
+		const [totalReactions, emojiIsAlreadyExist, alreadyReacted, reactionReputation] = await Promise.all([
 			db.setCount(`pid:${data.pid}:reactions`),
 			db.isSetMember(`pid:${data.pid}:reactions`, data.reaction),
 			db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
 			getReactionReputation(data.reaction),
 		]);
 
-		if (!isMember && totalReactions >= maximumReactions) {
-			throw new Error('[[reactions:error.maximum-reached]]');
+		if (!emojiIsAlreadyExist) {
+			if (totalReactions > maximumReactions) {
+				throw new Error(`[[reactions:error.maximum-reached]] (${maximumReactions})`);
+			}
+			
+			const maximumReactionsPerUserPerPost = settings.maximumReactionsPerUserPerPost ? parseInt(settings.maximumReactionsPerUserPerPost, 10) : 0;
+			if (maximumReactionsPerUserPerPost > 0) {
+				const emojiesInPost = await db.getSetMembers(`pid:${data.pid}:reactions`);
+				const userPostReactions = await db.isMemberOfSets(emojiesInPost.map(emojiName => `pid:${data.pid}:reaction:${emojiName}`), socket.uid);
+				const userPostReactionCount = userPostReactions.filter(Boolean).length;
+				if (userPostReactionCount > maximumReactionsPerUserPerPost) {
+					throw new Error(`[[reactions:error.maximum-per-user-per-post-reached]] (${maximumReactionsPerUserPerPost})`);
+				}
+			}
 		}
+		
 
 		await Promise.all([
 			db.setAdd(`pid:${data.pid}:reactions`, data.reaction),
