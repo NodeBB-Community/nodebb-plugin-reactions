@@ -214,7 +214,7 @@ SocketPlugins.reactions = {
 
 		if (!emojiIsAlreadyExist) {
 			if (totalReactions > maximumReactions) {
-				throw new Error('[[reactions:error.maximum-reached]]');
+				throw new Error(`[[reactions:error.maximum-reached]] (${maximumReactions})`);
 			}
 			
 			const maximumReactionsPerUserPerPost = settings.maximumReactionsPerUserPerPost ? parseInt(settings.maximumReactionsPerUserPerPost, 10) : 0;
@@ -223,7 +223,7 @@ SocketPlugins.reactions = {
 				const userPostReactions = await db.isMemberOfSets(emojiesInPost.map(emojiName => `pid:${data.pid}:reaction:${emojiName}`), socket.uid);
 				const userPostReactionCount = userPostReactions.filter(Boolean).length;
 				if (userPostReactionCount > maximumReactionsPerUserPerPost) {
-					throw new Error('[[reactions:error.maximum-per-user-per-post-reached]]');
+					throw new Error(`[[reactions:error.maximum-per-user-per-post-reached]] (${maximumReactionsPerUserPerPost})`
 				}
 			}
 		}
