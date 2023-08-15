@@ -451,6 +451,8 @@ SocketPlugins.reactions = {
 				throw new Error('[[error:not-allowed]]');
 			}
 			set = `mid:${data.mid}:reaction:${data.reaction}`;
+		} else {
+			throw new Error('[[error:invalid-data]]');
 		}
 		let uids = await db.getSetMembers(set);
 		const cutoff = 6;
