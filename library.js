@@ -5,6 +5,7 @@ const meta = require.main.require('./src/meta');
 const user = require.main.require('./src/user');
 const posts = require.main.require('./src/posts');
 const messaging = require.main.require('./src/messaging');
+const privileges = require.main.require('./src/privileges');
 const db = require.main.require('./src/database');
 const routesHelpers = require.main.require('./src/routes/helpers');
 const websockets = require.main.require('./src/socket.io/index');
@@ -83,42 +84,24 @@ ReactionsPlugin.getPostReactions = async function (data) {
 			}
 		}
 
-		const reactionSetToUsersMap = new Map(); // reactionSet -> { uid, username }
-		if (reactionSets.length > 0) {
-			const uidsForReactions = await db.getSetsMembers(reactionSets);
-			const allUids = _.union(...uidsForReactions).filter(Boolean);
-			const usersData = await user.getUsersFields(allUids, ['uid', 'username']);
-			const uidToUserdataMap = _.keyBy(usersData, 'uid');
-
-			for (let i = 0, len = reactionSets.length; i < len; i++) {
-				const uidsForReaction = uidsForReactions[i];
-				if (uidsForReaction && uidsForReaction.length > 0) {
-					const usersData = uidsForReaction.map(uid => uidToUserdataMap[uid]).filter(Boolean);
-					reactionSetToUsersMap.set(reactionSets[i], usersData);
-				}
-			}
-		}
+		const reactionSetToUsersMap = await getReactionSetsUidsMap(reactionSets);
 
 		for (const post of data.posts) {
 			post.maxReactionsReached = pidToIsMaxReactionsReachedMap.get(post.pid);
 			post.reactions = [];
 
-			if (pidToReactionsMap.has(post.pid)) {
-				for (const reaction of pidToReactionsMap.get(post.pid)) {
+			const reactions = pidToReactionsMap.get(post.pid);
+			if (reactions) {
+				for (const reaction of reactions) {
 					const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
-					if (reactionSetToUsersMap.has(reactionSet)) {
-						const usersData = reactionSetToUsersMap.get(reactionSet);
-						const reactionCount = usersData.length;
-						const reactedUsernames = usersData.map(userData => userData.username).join(', ');
-						const reactedUids = usersData.map(userData => userData.uid);
-
+					const uids = reactionSetToUsersMap.get(reactionSet);
+					if (Array.isArray(uids)) {
 						post.reactions.push({
 							pid: post.pid,
-							reacted: reactedUids.includes(data.uid),
+							reacted: uids.includes(String(data.uid)),
 							reaction,
-							usernames: reactedUsernames,
 							reactionImage: parse(reaction),
-							reactionCount,
+							reactionCount: uids.length,
 						});
 					}
 				}
@@ -158,42 +141,23 @@ ReactionsPlugin.getMessageReactions = async function (data) {
 			}
 		}
 
-		const reactionSetToUsersMap = new Map(); // reactionSet -> { uid, username }
-		if (reactionSets.length > 0) {
-			const uidsForReactions = await db.getSetsMembers(reactionSets);
-			const allUids = _.union(...uidsForReactions).filter(Boolean);
-			const usersData = await user.getUsersFields(allUids, ['uid', 'username']);
-			const uidToUserdataMap = _.keyBy(usersData, 'uid');
-
-			for (let i = 0, len = reactionSets.length; i < len; i++) {
-				const uidsForReaction = uidsForReactions[i];
-				if (uidsForReaction && uidsForReaction.length > 0) {
-					const usersData = uidsForReaction.map(uid => uidToUserdataMap[uid]).filter(Boolean);
-					reactionSetToUsersMap.set(reactionSets[i], usersData);
-				}
-			}
-		}
+		const reactionSetToUsersMap = await getReactionSetsUidsMap(reactionSets);
 
 		for (const msg of data.messages) {
 			msg.maxReactionsReached = midToIsMaxReactionsReachedMap.get(msg.mid);
 			msg.reactions = [];
-
-			if (midToReactionsMap.has(msg.mid)) {
-				for (const reaction of midToReactionsMap.get(msg.mid)) {
+			const reactions = midToReactionsMap.get(msg.mid);
+			if (reactions) {
+				for (const reaction of reactions) {
 					const reactionSet = `mid:${msg.mid}:reaction:${reaction}`;
-					if (reactionSetToUsersMap.has(reactionSet)) {
-						const usersData = reactionSetToUsersMap.get(reactionSet);
-						const reactionCount = usersData.length;
-						const reactedUsernames = usersData.map(userData => userData.username).join(', ');
-						const reactedUids = usersData.map(userData => userData.uid);
-
+					const uids = reactionSetToUsersMap.get(reactionSet);
+					if (Array.isArray(uids)) {
 						msg.reactions.push({
 							mid: msg.mid,
-							reacted: reactedUids.includes(data.uid),
+							reacted: uids.includes(String(data.uid)),
 							reaction,
-							usernames: reactedUsernames,
 							reactionImage: parse(reaction),
-							reactionCount,
+							reactionCount: uids.length,
 						});
 					}
 				}
@@ -204,6 +168,22 @@ ReactionsPlugin.getMessageReactions = async function (data) {
 	}
 	return data;
 };
+
+
+async function getReactionSetsUidsMap(reactionSets) {
+	const reactionSetToUsersMap = new Map(); // reactionSet -> uids
+	if (reactionSets.length > 0) {
+		const uidsForReactions = await db.getSetsMembers(reactionSets);
+
+		for (let i = 0, len = reactionSets.length; i < len; i++) {
+			const uidsForReaction = uidsForReactions[i];
+			if (uidsForReaction && uidsForReaction.length > 0) {
+				reactionSetToUsersMap.set(reactionSets[i], uidsForReaction);
+			}
+		}
+	}
+	return reactionSetToUsersMap;
+}
 
 ReactionsPlugin.onReply = async function (data) {
 	if (data.uid !== 0) {
@@ -229,14 +209,10 @@ ReactionsPlugin.deleteReactions = async function (hookData) {
 
 async function sendPostEvent(data, eventName) {
 	try {
-		const [reactionCount, totalReactions, uids] = await Promise.all([
+		const [reactionCount, totalReactions] = await Promise.all([
 			db.setCount(`pid:${data.pid}:reaction:${data.reaction}`),
 			db.setCount(`pid:${data.pid}:reactions`),
-			db.getSetMembers(`pid:${data.pid}:reaction:${data.reaction}`),
 		]);
-
-		const userdata = await user.getUsersFields(uids, ['uid', 'username']);
-		const usernames = userdata.map(user => user.username).join(', ');
 
 		if (parseInt(reactionCount, 10) === 0) {
 			await db.setRemove(`pid:${data.pid}:reactions`, data.reaction);
@@ -248,7 +224,6 @@ async function sendPostEvent(data, eventName) {
 			reaction: data.reaction,
 			reactionCount,
 			totalReactions,
-			usernames,
 			reactionImage: parse(data.reaction),
 		});
 	} catch (e) {
@@ -258,14 +233,10 @@ async function sendPostEvent(data, eventName) {
 
 async function sendMessageEvent(data, eventName) {
 	try {
-		const [reactionCount, totalReactions, uids] = await Promise.all([
+		const [reactionCount, totalReactions] = await Promise.all([
 			db.setCount(`mid:${data.mid}:reaction:${data.reaction}`),
 			db.setCount(`mid:${data.mid}:reactions`),
-			db.getSetMembers(`mid:${data.mid}:reaction:${data.reaction}`),
 		]);
-
-		const userdata = await user.getUsersFields(uids, ['uid', 'username']);
-		const usernames = userdata.map(user => user.username).join(', ');
 
 		if (parseInt(reactionCount, 10) === 0) {
 			await db.setRemove(`mid:${data.mid}:reactions`, data.reaction);
@@ -277,7 +248,6 @@ async function sendMessageEvent(data, eventName) {
 			reaction: data.reaction,
 			reactionCount,
 			totalReactions,
-			usernames,
 			reactionImage: parse(data.reaction),
 		});
 	} catch (e) {
@@ -461,6 +431,42 @@ SocketPlugins.reactions = {
 		}
 
 		await sendMessageEvent(data, 'event:reactions.removeMessageReaction');
+	},
+	getReactionUsernames: async function (socket, data) {
+		if (!socket.uid) {
+			throw new Error('[[error:not-logged-in]]');
+		}
+		if (!emojiTable[data.reaction]) {
+			throw new Error('[[reactions:error.invalid-reaction]]');
+		}
+		let set = '';
+		if (data.type === 'post') {
+			if (!await privileges.posts.can('topics:read', data.pid, socket.uid)) {
+				throw new Error('[[error:not-allowed]]');
+			}
+			set = `pid:${data.pid}:reaction:${data.reaction}`;
+		} else if (data.type === 'message') {
+			const roomId = await messaging.getMessageField(data.mid, 'roomId');
+			if (!await messaging.canViewMessage(data.mid, roomId, socket.uid)) {
+				throw new Error('[[error:not-allowed]]');
+			}
+			set = `mid:${data.mid}:reaction:${data.reaction}`;
+		}
+		let uids = await db.getSetMembers(set);
+		const cutoff = 6;
+
+		let otherCount = 0;
+		if (uids.length > cutoff) {
+			otherCount = uids.length - (cutoff - 1);
+			uids = uids.slice(0, cutoff - 1);
+		}
+
+		const usernames = await user.getUsernamesByUids(uids);
+		return {
+			cutoff: cutoff,
+			otherCount,
+			usernames,
+		};
 	},
 };
 

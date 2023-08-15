@@ -3,6 +3,8 @@
 $(document).ready(function () {
 	setupReactions();
 	let alerts;
+	let mouseOverReactionEl;
+	let tooltipTimeoutId = 0;
 	function setupReactions() {
 		createReactionTooltips();
 		require(['hooks', 'alerts'], function (hooks, _alerts) {
@@ -10,7 +12,11 @@ $(document).ready(function () {
 			hooks.on('action:ajaxify.end', function () {
 				if (ajaxify.data.template.topic) {
 					setupPostReactions();
-				} else if (ajaxify.data.template.chats && ajaxify.data.roomId) {
+				}
+			});
+			// switchChat uses action:chat.loaded and not action:ajaxify.end
+			hooks.on('action:chat.loaded', function () {
+				if (ajaxify.data.template.chats && ajaxify.data.roomId) {
 					setupMessageReactions();
 				}
 			});
@@ -186,11 +192,18 @@ $(document).ready(function () {
 				mid: data.mid,
 				reaction: data.reaction,
 				reactionCount: data.reactionCount,
-				usernames: data.usernames,
 				reacted: isSelf && type === 'add',
 				reactionImage: data.reactionImage,
 			}, function (html) {
-				$('[component="message/reactions"][data-mid="' + data.mid + '"]').append(html);
+				require(['forum/chats/messages'], function (messages) {
+					const reactionEl = $('[component="message/reactions"][data-mid="' + data.mid + '"]');
+					const chatContentEl = reactionEl.parents('[component="chat/message/content"]');
+					const isAtBottom = messages.isAtBottom(chatContentEl);
+					reactionEl.append(html);
+					if (isAtBottom || isSelf) {
+						messages.scrollToBottom(chatContentEl);
+					}
+				});
 			});
 		} else {
 			reactionEl.find('.reaction-emoji-count').attr('data-count', data.reactionCount);
@@ -203,13 +216,65 @@ $(document).ready(function () {
 	}
 
 	function createReactionTooltips() {
-		if (!utils.isTouchDevice()) {
-			$('#content').tooltip({
-				selector: '.reaction',
-				placement: 'top',
-				container: '#content',
-				animation: false,
-			});
-		}
+		require(['bootstrap', 'translator'], function (bootstrap, translator) {
+			async function createTooltip(data) {
+				if (!mouseOverReactionEl || !mouseOverReactionEl.length) {
+					return;
+				}
+				const el = mouseOverReactionEl;
+				let usernames = data.usernames.filter(name => name !== '[[global:former_user]]');
+				if (!usernames.length) {
+					return;
+				}
+				if (usernames.length + data.otherCount > data.cutoff) {
+					usernames = usernames.join(', ').replace(/,/g, '|');
+					usernames = await translator.translate('[[topic:users_and_others, ' + usernames + ', ' + data.otherCount + ']]');
+					usernames = usernames.replace(/\|/g, ',');
+				} else {
+					usernames = usernames.join(', ');
+				}
+
+				el.attr('title', usernames);
+				(new bootstrap.Tooltip(el, {
+					container: '#content',
+					html: true,
+					placement: 'top',
+					animation: false,
+				})).show();
+			}
+
+			if (!utils.isTouchDevice()) {
+				$('#content').on('mouseenter', '.reaction', function () {
+					const $this = $(this);
+					mouseOverReactionEl = $this;
+					const mid = $this.attr('data-mid');
+					const pid = $this.attr('data-pid');
+					tooltipTimeoutId = setTimeout(async () => {
+						if (mouseOverReactionEl && mouseOverReactionEl.length) {
+							const d = await socket.emit('plugins.reactions.getReactionUsernames', {
+								type: pid ? 'post' : 'message',
+								mid: mid,
+								pid: pid,
+								reaction: $this.attr('data-reaction'),
+							});
+							createTooltip(d);
+						}
+					}, 200);
+				});
+				$('#content').on('mouseleave', '.reaction', function () {
+					if (tooltipTimeoutId) {
+						clearTimeout(tooltipTimeoutId);
+						tooltipTimeoutId = 0;
+					}
+					mouseOverReactionEl = null;
+					const $this = $(this);
+					const tooltip = bootstrap.Tooltip.getInstance(this);
+					if (tooltip) {
+						tooltip.dispose();
+						$this.attr('title', '');
+					}
+				});
+			}
+		});
 	}
 });
