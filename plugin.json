@@ -26,6 +26,9 @@
             "hook": "filter:config.get", "method": "getPluginConfig"
         },
         {
+            "hook": "filter:settings.get", "method": "filterSettingsGet"
+        },
+        {
             "hook": "filter:post.getPosts", "method": "getPostReactions"
         },
         {

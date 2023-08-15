@@ -7,10 +7,13 @@
 			<form role="form" class="reactions-settings">
 				<div class="mb-3">
 					<h5 class="fw-bold tracking-tight settings-header">[[reactions:settings.title]]</h5>
+					<div class="form-check form-switch mb-3">
+						<input id="enablePostReactions" name="enablePostReactions" type="checkbox" class="form-check-input">
+						<label for="enablePostReactions" class="form-check-label">[[reactions:settings.enable-post-reactions]]</label>
+					</div>
 					<div class="mb-3">
 						<label class="form-label">[[reactions:settings.max-reactions-per-post]]</label>
 						<input type="number" min="0" class="form-control" id="maximumReactions" name="maximumReactions">
-
 					</div>
 					<div class="mb-3">
 						<label class="form-label">[[reactions:settings.max-reactions-per-user-per-post]]</label>
@@ -18,6 +21,11 @@
 						<p class="form-text">
 							[[reactions:settings.max-reactions-per-user-per-post-help]]
 						</p>
+					</div>
+					<hr/>
+					<div class="form-check form-switch mb-3">
+						<input id="enableMessageReactions" name="enableMessageReactions" type="checkbox" class="form-check-input">
+						<label for="enableMessageReactions" class="form-check-label">[[reactions:settings.enable-message-reactions]]</label>
 					</div>
 					<div class="mb-3">
 						<label class="form-label">[[reactions:settings.max-reactions-per-message]]</label>
