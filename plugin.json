@@ -26,7 +26,10 @@
             "hook": "filter:config.get", "method": "getPluginConfig"
         },
         {
-            "hook": "filter:post.getPosts", "method": "getReactions"
+            "hook": "filter:post.getPosts", "method": "getPostReactions"
+        },
+        {
+            "hook": "filter:messaging.getMessages", "method": "getMessageReactions"
         },
         {
             "hook": "filter:post.get", "method": "onReply"

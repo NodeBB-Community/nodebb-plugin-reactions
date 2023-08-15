@@ -1,6 +1,6 @@
 .reactions {
 	.reaction {
-		border: 1px solid #9ddefe;
+		border: 1px solid var(--bs-primary-bg-subtle);
 		display: inline-block;
 		border-radius: 4px;
 		padding: 2px 4px;
@@ -10,7 +10,7 @@
 			height: 18px;
 		}
 		&.reacted {
-			border: 1px solid #039BE5;
+			border: 1px solid var(--bs-primary);
 		}
 		.reaction-emoji-count {
 			margin-left: 5px;

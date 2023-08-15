@@ -12,11 +12,23 @@
 						<input type="number" min="0" class="form-control" id="maximumReactions" name="maximumReactions">
 
 					</div>
-					<div class="">
+					<div class="mb-3">
 						<label class="form-label">[[reactions:settings.max-reactions-per-user-per-post]]</label>
 						<input type="number" min="0" class="form-control" id="maximumReactionsPerUserPerPost" name="maximumReactionsPerUserPerPost">
 						<p class="form-text">
 							[[reactions:settings.max-reactions-per-user-per-post-help]]
+						</p>
+					</div>
+					<div class="mb-3">
+						<label class="form-label">[[reactions:settings.max-reactions-per-message]]</label>
+						<input type="number" min="0" class="form-control" id="maximumReactionsPerMessage" name="maximumReactionsPerMessage">
+
+					</div>
+					<div class="">
+						<label class="form-label">[[reactions:settings.max-reactions-per-user-per-message]]</label>
+						<input type="number" min="0" class="form-control" id="maximumReactionsPerUserPerMessage" name="maximumReactionsPerUserPerMessage">
+						<p class="form-text">
+							[[reactions:settings.max-reactions-per-user-per-message-help]]
 						</p>
 					</div>
 				</div>
