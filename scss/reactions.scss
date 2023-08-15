@@ -1,4 +1,6 @@
 .reactions {
+	display: flex;
+	gap: 1;
 	.reaction {
 		border: 1px solid var(--bs-primary-bg-subtle);
 		display: inline-block;
@@ -6,8 +8,10 @@
 		padding: 2px 4px;
 		margin: 0 1px;
 		cursor: pointer;
+		display: flex;
+		align-items: center;
 		.emoji {
-			height: 18px;
+			height: 18px!important;
 		}
 		&.reacted {
 			border: 1px solid var(--bs-primary);
