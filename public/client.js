@@ -200,7 +200,7 @@ $(document).ready(function () {
 					const chatContentEl = reactionEl.parents('[component="chat/message/content"]');
 					const isAtBottom = messages.isAtBottom(chatContentEl);
 					reactionEl.append(html);
-					if (isAtBottom || isSelf) {
+					if (isAtBottom) {
 						messages.scrollToBottom(chatContentEl);
 					}
 				});
