@@ -73,6 +73,9 @@ ReactionsPlugin.getPostReactions = async function (data) {
 
 	try {
 		const settings = await meta.settings.get('reactions');
+		if (settings.enablePostReactions === 'off') {
+			return data;
+		}
 		const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
 
 		const pids = data.posts.map(post => post && parseInt(post.pid, 10));
@@ -134,6 +137,9 @@ ReactionsPlugin.getMessageReactions = async function (data) {
 
 	try {
 		const settings = await meta.settings.get('reactions');
+		if (settings.enableMessageReactions === 'off') {
+			return data;
+		}
 		const maximumReactionsPerMessage = settings.maximumReactionsPerMessage || DEFAULT_MAX_EMOTES;
 
 		const mids = data.messages.map(message => message && parseInt(message.mid, 10));
