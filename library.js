@@ -22,10 +22,11 @@ function parse(name) {
 const ReactionsPlugin = {};
 
 ReactionsPlugin.init = async function (params) {
-	function renderAdmin(_, res) {
-		res.render('admin/plugins/reactions', {});
-	}
-	routesHelpers.setupAdminPageRoute(params.router, '/admin/plugins/reactions', params.middleware, [], renderAdmin);
+	routesHelpers.setupAdminPageRoute(params.router, '/admin/plugins/reactions', (req, res) => {
+		res.render('admin/plugins/reactions', {
+			title: '[[reactions:reactions]]',
+		});
+	});
 };
 
 ReactionsPlugin.addAdminNavigation = async function (header) {
@@ -216,7 +217,7 @@ SocketPlugins.reactions = {
 			if (totalReactions > maximumReactions) {
 				throw new Error(`[[reactions:error.maximum-reached]] (${maximumReactions})`);
 			}
-			
+
 			const maximumReactionsPerUserPerPost = settings.maximumReactionsPerUserPerPost ? parseInt(settings.maximumReactionsPerUserPerPost, 10) : 0;
 			if (maximumReactionsPerUserPerPost > 0) {
 				const emojiesInPost = await db.getSetMembers(`pid:${data.pid}:reactions`);
@@ -227,7 +228,7 @@ SocketPlugins.reactions = {
 				}
 			}
 		}
-		
+
 
 		await Promise.all([
 			db.setAdd(`pid:${data.pid}:reactions`, data.reaction),
