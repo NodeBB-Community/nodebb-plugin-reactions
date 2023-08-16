@@ -218,9 +218,6 @@ $(document).ready(function () {
 	function createReactionTooltips() {
 		require(['bootstrap', 'translator'], function (bootstrap, translator) {
 			async function createTooltip(data) {
-				if (!mouseOverReactionEl || !mouseOverReactionEl.length) {
-					return;
-				}
 				const el = mouseOverReactionEl;
 				let usernames = data.usernames.filter(name => name !== '[[global:former_user]]');
 				if (!usernames.length) {
@@ -242,30 +239,43 @@ $(document).ready(function () {
 					animation: false,
 				})).show();
 			}
+			function clearTooltipTimeout() {
+				if (tooltipTimeoutId) {
+					clearTimeout(tooltipTimeoutId);
+					tooltipTimeoutId = 0;
+				}
+			}
 
 			if (!utils.isTouchDevice()) {
 				$('#content').on('mouseenter', '.reaction', function () {
 					const $this = $(this);
 					mouseOverReactionEl = $this;
-					const mid = $this.attr('data-mid');
-					const pid = $this.attr('data-pid');
+					clearTooltipTimeout();
 					tooltipTimeoutId = setTimeout(async () => {
 						if (mouseOverReactionEl && mouseOverReactionEl.length) {
-							const d = await socket.emit('plugins.reactions.getReactionUsernames', {
-								type: pid ? 'post' : 'message',
+							const pid = mouseOverReactionEl.attr('data-pid');
+							const mid = mouseOverReactionEl.attr('data-mid');
+							const type = pid ? 'post' : 'message';
+							const data = await socket.emit('plugins.reactions.getReactionUsernames', {
+								type: type,
 								mid: mid,
 								pid: pid,
-								reaction: $this.attr('data-reaction'),
+								reaction: mouseOverReactionEl.attr('data-reaction'),
 							});
-							createTooltip(d);
+
+							if (mouseOverReactionEl && mouseOverReactionEl.length &&
+								(
+									(type === 'post' && pid === mouseOverReactionEl.attr('data-pid')) ||
+									(type === 'message' && mid === mouseOverReactionEl.attr('data-mid'))
+								)
+							) {
+								createTooltip(data);
+							}
 						}
 					}, 200);
 				});
 				$('#content').on('mouseleave', '.reaction', function () {
-					if (tooltipTimeoutId) {
-						clearTimeout(tooltipTimeoutId);
-						tooltipTimeoutId = 0;
-					}
+					clearTooltipTimeout();
 					mouseOverReactionEl = null;
 					const $this = $(this);
 					const tooltip = bootstrap.Tooltip.getInstance(this);
