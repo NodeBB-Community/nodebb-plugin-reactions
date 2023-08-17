@@ -265,15 +265,17 @@ $(document).ready(function () {
 						if (mouseOverReactionEl && mouseOverReactionEl.length) {
 							const pid = mouseOverReactionEl.attr('data-pid');
 							const mid = mouseOverReactionEl.attr('data-mid');
+							const reaction = mouseOverReactionEl.attr('data-reaction');
 							const type = pid ? 'post' : 'message';
 							const data = await socket.emit('plugins.reactions.getReactionUsernames', {
 								type: type,
 								mid: mid,
 								pid: pid,
-								reaction: mouseOverReactionEl.attr('data-reaction'),
+								reaction: reaction,
 							});
 
 							if (mouseOverReactionEl && mouseOverReactionEl.length &&
+								reaction === mouseOverReactionEl.attr('data-reaction') &&
 								(
 									(type === 'post' && pid === mouseOverReactionEl.attr('data-pid')) ||
 									(type === 'message' && mid === mouseOverReactionEl.attr('data-mid'))
