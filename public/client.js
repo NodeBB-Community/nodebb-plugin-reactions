@@ -217,8 +217,18 @@ $(document).ready(function () {
 
 	function createReactionTooltips() {
 		require(['bootstrap', 'translator'], function (bootstrap, translator) {
+			function disposeTooltip(el) {
+				if (el && el.length) {
+					const tooltip = bootstrap.Tooltip.getInstance(el.get(0));
+					if (tooltip) {
+						tooltip.dispose();
+						el.attr('title', '');
+					}
+				}
+			}
 			async function createTooltip(data) {
 				const el = mouseOverReactionEl;
+				disposeTooltip(el);
 				let usernames = data.usernames.filter(name => name !== '[[global:former_user]]');
 				if (!usernames.length) {
 					return;
@@ -277,12 +287,7 @@ $(document).ready(function () {
 				$('#content').on('mouseleave', '.reaction', function () {
 					clearTooltipTimeout();
 					mouseOverReactionEl = null;
-					const $this = $(this);
-					const tooltip = bootstrap.Tooltip.getInstance(this);
-					if (tooltip) {
-						tooltip.dispose();
-						$this.attr('title', '');
-					}
+					disposeTooltip($(this));
 				});
 			}
 		});
