@@ -15,9 +15,11 @@ $(document).ready(function () {
 				}
 			});
 			// switchChat uses action:chat.loaded and not action:ajaxify.end
-			hooks.on('action:chat.loaded', function () {
+			hooks.on('action:chat.loaded', function (container) {
 				if (ajaxify.data.template.chats && ajaxify.data.roomId) {
-					setupMessageReactions();
+					setupMessageReactions(container);
+				} else if (container.hasClass('chat-modal')) {
+					setupMessageReactions(container);
 				}
 			});
 		});
@@ -81,10 +83,10 @@ $(document).ready(function () {
 		});
 	}
 
-	function setupMessageReactions() {
+	function setupMessageReactions(container) {
 		setupMessageReactionSockets();
 
-		const messageContent = $('[component="chat/message/content"]');
+		const messageContent = container.find('[component="chat/message/content"]');
 		messageContent.on('click', '[component="message/reaction"]', function () {
 			var reactionElement = $(this);
 			var mid = reactionElement.attr('data-mid');
@@ -257,7 +259,7 @@ $(document).ready(function () {
 			}
 
 			if (!utils.isTouchDevice()) {
-				$('#content').on('mouseenter', '.reaction', function () {
+				$('body').on('mouseenter', '.reaction', function () {
 					const $this = $(this);
 					mouseOverReactionEl = $this;
 					clearTooltipTimeout();
@@ -286,7 +288,7 @@ $(document).ready(function () {
 						}
 					}, 200);
 				});
-				$('#content').on('mouseleave', '.reaction', function () {
+				$('body').on('mouseleave', '.reaction', function () {
 					clearTooltipTimeout();
 					mouseOverReactionEl = null;
 					disposeTooltip($(this));
