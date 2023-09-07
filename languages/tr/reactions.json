@@ -1,0 +1,23 @@
+{
+  "reactions": "Tepkiler",
+  "add-reaction": "Tepki ekle",
+  "error.invalid-reaction": "Geçersiz tepki",
+  "error.maximum-reached": "Verilebilecek en fazla sayıda tepkiye ulaşıldı",
+  "error.maximum-per-user-per-post-reached": "Bir kullanıcıya iletisi için verilebilecek en fazla sayıda tepkiye ulaşıldı",
+  "settings.title": "Tepkiler eklentisi ayarları",
+  "settings.enable-post-reactions": "İleti tepkilerini aktifleştir",
+  "settings.max-reactions-per-post": "Her iletiye verilebilecek en fazla sayıda farklı tepki (sınırsız için 0 seçiniz, varsayılan: 4)",
+  "settings.max-reactions-per-user-per-post": "Bir kullanıcının bir iletiye verebileceği en fazla sayıda tepki (sınırsız için 0 seçiniz)",
+  "settings.max-reactions-per-user-per-post-help": "Sayı limiti sadece iletiye farklı ve yeni bir tepki eklenirken uygulanır.",
+  "settings.enable-message-reactions": "Sohbet tepkilerini etkinleştir",
+  "settings.max-reactions-per-message": "Her mesaja verilebilecek en fazla sayıda farklı tepki (sınırsız için 0 seçiniz, varsayılan: 4)",
+  "settings.max-reactions-per-user-per-message": "Bir kullanıcının bir mesaja verebileceği en fazla sayıda tepki (sınırsız için 0 seçiniz)",
+  "settings.max-reactions-per-user-per-message-help": "Sayı limiti sadece mesaja farklı ve yeni bir tepki eklenirken uygulanır.",
+  "settings.reaction-reputations": "Tepki Saygınlıkları (İsteğe bağlı)",
+  "settings.reaction-reputations-help": "Her tepkiye bir saygınlık puanı atayabilirsiniz. İletiye tepki verildiğinde, kullanıcı bu saygınlık puanını alır.",
+  "settings.reaction-reputations.add": "Kural ekle",
+  "settings.reaction-reputations.reaction": "Tepki",
+  "settings.reaction-reputations.reputation": "Saygınlık",
+  "settings.reaction-reputations.remove": "Sil",
+  "settings.reaction-reputations.edit": "Düzenle"
+}
