@@ -11,13 +11,25 @@ const websockets = require.main.require('./src/socket.io/index');
 const SocketPlugins = require.main.require('./src/socket.io/plugins');
 
 const emojiParser = require.main.require('nodebb-plugin-emoji/build/lib/parse.js');
-const emojiTable = require.main.require('nodebb-plugin-emoji/build/emoji/table.json');
-const emojiAliases = require.main.require('nodebb-plugin-emoji/build/emoji/aliases.json');
+
+let emojiTable = null;
+let emojiAliases = null;
 
 const DEFAULT_MAX_EMOTES = 4;
 
+function nameToEmoji(name) {
+	if (!emojiTable) {
+		emojiTable = require.main.require('nodebb-plugin-emoji/build/emoji/table.json');
+	}
+	return emojiTable[name];
+}
+
 function parse(name) {
-	return emojiParser.buildEmoji(emojiTable[name] || emojiTable[emojiAliases[name]], '');
+	if (!emojiAliases) {
+		emojiAliases = require.main.require('nodebb-plugin-emoji/build/emoji/aliases.json');
+	}
+
+	return emojiParser.buildEmoji(nameToEmoji(name) || emojiTable[emojiAliases[name]], '');
 }
 
 const ReactionsPlugin = module.exports;
@@ -295,7 +307,7 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:not-logged-in]]');
 		}
 
-		if (!emojiTable[data.reaction]) {
+		if (!nameToEmoji(data.reaction)) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
@@ -349,7 +361,7 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:not-logged-in]]');
 		}
 
-		if (!emojiTable[data.reaction]) {
+		if (!nameToEmoji(data.reaction)) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
@@ -387,7 +399,7 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:not-logged-in]]');
 		}
 
-		if (!emojiTable[data.reaction]) {
+		if (!nameToEmoji(data.reaction)) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
@@ -438,7 +450,7 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:not-logged-in]]');
 		}
 
-		if (!emojiTable[data.reaction]) {
+		if (!nameToEmoji(data.reaction)) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
@@ -470,7 +482,7 @@ SocketPlugins.reactions = {
 		if (!socket.uid) {
 			throw new Error('[[error:not-logged-in]]');
 		}
-		if (!emojiTable[data.reaction]) {
+		if (!nameToEmoji(data.reaction)) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 		let set = '';
