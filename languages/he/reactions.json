@@ -13,6 +13,8 @@
   "settings.reaction-reputations.add": "הוסף כלל",
   "settings.reaction-reputations.reaction": "תגובה",
   "settings.reaction-reputations.reputation": "מוניטין",
-  "settings.reaction-reputations.remove": "הסר",
-  "settings.reaction-reputations.edit": "ערוך"
+  "settings.reaction-reputations.remove": "הסרה",
+  "settings.reaction-reputations.edit": "עריכה",
+  "notification.user-has-reacted-with-to-your-post-in-topic": "<strong>%1</strong> הגיב עם %2 לפוסט שלך ב-<strong>%3</strong>",
+  "notification.user-has-reacted-with-to-your-message-in-room": "<strong>%1</strong> הגיב עם %2 להודעה שלך ב-<strong class=\"text-nowrap \"><i class=\"fa %3\"></i>%4</strong>"
 }
