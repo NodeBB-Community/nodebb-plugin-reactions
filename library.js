@@ -3,9 +3,12 @@
 const meta = require.main.require('./src/meta');
 const user = require.main.require('./src/user');
 const posts = require.main.require('./src/posts');
+const topics = require.main.require('./src/topics');
 const messaging = require.main.require('./src/messaging');
 const privileges = require.main.require('./src/privileges');
 const db = require.main.require('./src/database');
+const translator = require.main.require('./src/translator');
+const notifications = require.main.require('./src/notifications');
 const routesHelpers = require.main.require('./src/routes/helpers');
 const websockets = require.main.require('./src/socket.io/index');
 const SocketPlugins = require.main.require('./src/socket.io/plugins');
@@ -316,13 +319,14 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:post-reactions-disabled]]');
 		}
 		const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
-		const [tid, totalReactions, emojiIsAlreadyExist, alreadyReacted, reactionReputation] = await Promise.all([
-			posts.getPostField(data.pid, 'tid'),
+		const [postData, totalReactions, emojiIsAlreadyExist, alreadyReacted, reactionReputation] = await Promise.all([
+			posts.getPostFields(data.pid, ['tid', 'uid']),
 			db.setCount(`pid:${data.pid}:reactions`),
 			db.isSetMember(`pid:${data.pid}:reactions`, data.reaction),
 			db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
 			getReactionReputation(data.reaction),
 		]);
+		const { tid } = postData;
 		if (!tid) {
 			throw new Error('[[error:no-post]]');
 		}
@@ -352,6 +356,28 @@ SocketPlugins.reactions = {
 
 		if (!alreadyReacted && reactionReputation > 0) {
 			await giveOwnerReactionReputation(reactionReputation, data.pid);
+		}
+
+		if (postData.uid && postData.uid !== socket.uid) {
+			const [userData, topicData] = await Promise.all([
+				user.getUserFields(socket.uid, ['username', 'fullname']),
+				topics.getTopicFields(data.tid, ['title']),
+			]);
+			const notifObj = await notifications.create({
+				bodyShort: translator.compile(
+					'reactions:notification.user-has-reacted-with-to-your-post-in-topic',
+					userData.displayname,
+					`:${data.reaction}:`,
+					topicData.title
+				),
+				nid: `uid:${socket.uid}:pid:${data.pid}:reaction:${data.reaction}`,
+				pid: data.pid,
+				tid: data.tid,
+				from: socket.uid,
+				path: `/post/${data.pid}`,
+			});
+
+			await notifications.push(notifObj, [postData.uid]);
 		}
 
 		await sendPostEvent(data, 'event:reactions.addPostReaction');
@@ -408,12 +434,12 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:post-reactions-disabled]]');
 		}
 		const maximumReactionsPerMessage = settings.maximumReactionsPerMessage || DEFAULT_MAX_EMOTES;
-		const [roomId, totalReactions, emojiIsAlreadyExist] = await Promise.all([
-			messaging.getMessageField(data.mid, 'roomId'),
+		const [msgData, totalReactions, emojiIsAlreadyExist] = await Promise.all([
+			messaging.getMessageFields(data.mid, ['roomId', 'fromuid']),
 			db.setCount(`mid:${data.mid}:reactions`),
 			db.isSetMember(`mid:${data.mid}:reactions`, data.reaction),
 		]);
-
+		const { roomId } = msgData;
 		if (!roomId) {
 			throw new Error('[[error:no-message]]');
 		}
@@ -442,6 +468,33 @@ SocketPlugins.reactions = {
 			db.setAdd(`mid:${data.mid}:reactions`, data.reaction),
 			db.setAdd(`mid:${data.mid}:reaction:${data.reaction}`, socket.uid),
 		]);
+
+		if (msgData.fromuid && msgData.fromuid !== socket.uid) {
+			const [userData, roomData] = await Promise.all([
+				user.getUserFields(socket.uid, ['username', 'userslug', 'fullname']),
+				messaging.getRoomData(roomId),
+			]);
+			const roomName = roomData.roomName || `[[modules:chat.room-id, ${roomId}]]`;
+			const icon = messaging.getRoomIcon(roomData);
+
+			const notifObj = await notifications.create({
+				bodyShort: translator.compile(
+					'reactions:notification.user-has-reacted-with-to-your-message-in-room',
+					userData.displayname,
+					`:${data.reaction}:`,
+					icon,
+					roomName
+				),
+				roomIcon: icon,
+				nid: `uid:${socket.uid}:mid:${data.mid}:reaction:${data.reaction}`,
+				mid: data.mid,
+				roomId: roomId,
+				from: socket.uid,
+				path: `/chats/${roomId}`,
+			});
+
+			await notifications.push(notifObj, [msgData.fromuid]);
+		}
 
 		await sendMessageEvent(data, 'event:reactions.addMessageReaction');
 	},
