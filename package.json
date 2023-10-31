@@ -2,7 +2,7 @@
   "name": "@nodebb/nodebb-plugin-reactions",
   "version": "2.1.16",
   "nbbpm": {
-    "compatibility": "^3.3.0"
+    "compatibility": "^3.6.0"
   },
   "description": "Reactions plugin for NodeBB",
   "main": "library.js",

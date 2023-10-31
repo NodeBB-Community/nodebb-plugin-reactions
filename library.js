@@ -490,7 +490,7 @@ SocketPlugins.reactions = {
 				mid: data.mid,
 				roomId: roomId,
 				from: socket.uid,
-				path: `/chats/${roomId}`,
+				path: `/message/${data.mid}`,
 			});
 
 			await notifications.push(notifObj, [msgData.fromuid]);
