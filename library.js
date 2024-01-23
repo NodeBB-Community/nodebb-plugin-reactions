@@ -119,22 +119,24 @@ ReactionsPlugin.getPostReactions = async function (data) {
 		const reactionSetToUsersMap = await getReactionSetsUidsMap(reactionSets);
 
 		for (const post of data.posts) {
-			post.maxReactionsReached = pidToIsMaxReactionsReachedMap.get(post.pid);
-			post.reactions = [];
+			if (post) {
+				post.maxReactionsReached = pidToIsMaxReactionsReachedMap.get(post.pid);
+				post.reactions = [];
 
-			const reactions = pidToReactionsMap.get(post.pid);
-			if (reactions) {
-				for (const reaction of reactions) {
-					const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
-					const uids = reactionSetToUsersMap.get(reactionSet);
-					if (Array.isArray(uids)) {
-						post.reactions.push({
-							pid: post.pid,
-							reacted: uids.includes(String(data.uid)),
-							reaction,
-							reactionImage: parse(reaction),
-							reactionCount: uids.length,
-						});
+				const reactions = pidToReactionsMap.get(post.pid);
+				if (reactions) {
+					for (const reaction of reactions) {
+						const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
+						const uids = reactionSetToUsersMap.get(reactionSet);
+						if (Array.isArray(uids)) {
+							post.reactions.push({
+								pid: post.pid,
+								reacted: uids.includes(String(data.uid)),
+								reaction,
+								reactionImage: parse(reaction),
+								reactionCount: uids.length,
+							});
+						}
 					}
 				}
 			}
@@ -179,21 +181,23 @@ ReactionsPlugin.getMessageReactions = async function (data) {
 		const reactionSetToUsersMap = await getReactionSetsUidsMap(reactionSets);
 
 		for (const msg of data.messages) {
-			msg.maxReactionsReached = midToIsMaxReactionsReachedMap.get(msg.mid);
-			msg.reactions = [];
-			const reactions = midToReactionsMap.get(msg.mid);
-			if (reactions) {
-				for (const reaction of reactions) {
-					const reactionSet = `mid:${msg.mid}:reaction:${reaction}`;
-					const uids = reactionSetToUsersMap.get(reactionSet);
-					if (Array.isArray(uids)) {
-						msg.reactions.push({
-							mid: msg.mid,
-							reacted: uids.includes(String(data.uid)),
-							reaction,
-							reactionImage: parse(reaction),
-							reactionCount: uids.length,
-						});
+			if (msg) {
+				msg.maxReactionsReached = midToIsMaxReactionsReachedMap.get(msg.mid);
+				msg.reactions = [];
+				const reactions = midToReactionsMap.get(msg.mid);
+				if (reactions) {
+					for (const reaction of reactions) {
+						const reactionSet = `mid:${msg.mid}:reaction:${reaction}`;
+						const uids = reactionSetToUsersMap.get(reactionSet);
+						if (Array.isArray(uids)) {
+							msg.reactions.push({
+								mid: msg.mid,
+								reacted: uids.includes(String(data.uid)),
+								reaction,
+								reactionImage: parse(reaction),
+								reactionCount: uids.length,
+							});
+						}
 					}
 				}
 			}
