@@ -31,8 +31,8 @@ function parse(name) {
 	if (!emojiAliases) {
 		emojiAliases = require.main.require('nodebb-plugin-emoji/build/emoji/aliases.json');
 	}
-
-	return emojiParser.buildEmoji(nameToEmoji(name) || emojiTable[emojiAliases[name]], '');
+	const emoji = nameToEmoji(name) || emojiTable[emojiAliases[name]];
+	return emoji ? emojiParser.buildEmoji(emoji, '') : '';
 }
 
 const ReactionsPlugin = module.exports;
@@ -128,12 +128,13 @@ ReactionsPlugin.getPostReactions = async function (data) {
 					for (const reaction of reactions) {
 						const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
 						const uids = reactionSetToUsersMap.get(reactionSet);
-						if (Array.isArray(uids)) {
+						const reactionImage = parse(reaction);
+						if (Array.isArray(uids) && reactionImage) {
 							post.reactions.push({
 								pid: post.pid,
 								reacted: uids.includes(String(data.uid)),
 								reaction,
-								reactionImage: parse(reaction),
+								reactionImage: reactionImage,
 								reactionCount: uids.length,
 							});
 						}
@@ -189,12 +190,13 @@ ReactionsPlugin.getMessageReactions = async function (data) {
 					for (const reaction of reactions) {
 						const reactionSet = `mid:${msg.mid}:reaction:${reaction}`;
 						const uids = reactionSetToUsersMap.get(reactionSet);
-						if (Array.isArray(uids)) {
+						const reactionImage = parse(reaction);
+						if (Array.isArray(uids) && reactionImage) {
 							msg.reactions.push({
 								mid: msg.mid,
 								reacted: uids.includes(String(data.uid)),
 								reaction,
-								reactionImage: parse(reaction),
+								reactionImage: reactionImage,
 								reactionCount: uids.length,
 							});
 						}
