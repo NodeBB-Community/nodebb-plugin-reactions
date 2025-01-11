@@ -166,7 +166,7 @@ $(document).ready(function () {
 				reacted: isSelf && type === 'add',
 				reactionImage: data.reactionImage,
 			}, function (html) {
-				$('[component="post/reactions"][data-pid="' + data.pid + '"]').append(html);
+				$('[component="post/reactions"][data-pid="' + data.pid + '"]').prepend(html);
 			});
 		} else {
 			reactionEl.find('.reaction-emoji-count').attr('data-count', data.reactionCount);
