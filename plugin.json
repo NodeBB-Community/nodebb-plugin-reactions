@@ -16,29 +16,15 @@
         "../admin/plugins/reactions.js": "./public/admin.js"
     },
     "hooks": [
-        {
-            "hook": "static:app.load", "method": "init"
-        },
-        {
-            "hook": "filter:admin.header.build", "method": "addAdminNavigation"
-        },
-        {
-            "hook": "filter:config.get", "method": "getPluginConfig"
-        },
-        {
-            "hook": "filter:settings.get", "method": "filterSettingsGet"
-        },
-        {
-            "hook": "filter:post.getPosts", "method": "getPostReactions"
-        },
-        {
-            "hook": "filter:messaging.getMessages", "method": "getMessageReactions"
-        },
-        {
-            "hook": "filter:post.get", "method": "onReply"
-        },
-        {
-            "hook": "action:posts.purge", "method": "deleteReactions"
-        }
+        { "hook": "static:app.load", "method": "init" },
+        { "hook": "filter:admin.header.build", "method": "addAdminNavigation"},
+        { "hook": "filter:config.get", "method": "getPluginConfig" },
+        { "hook": "filter:settings.get", "method": "filterSettingsGet" },
+        { "hook": "filter:post.getPosts", "method": "getPostReactions" },
+        { "hook": "filter:messaging.getMessages", "method": "getMessageReactions" },
+        { "hook": "filter:post.get", "method": "onReply" },
+        { "hook": "action:posts.purge", "method": "deleteReactions" },
+        { "hook": "filter:notifications.addFilters", "method": "addNotificationFilters" },
+        { "hook": "filter:user.notificationTypes", "method": "notificationTypes" }
     ]
 }

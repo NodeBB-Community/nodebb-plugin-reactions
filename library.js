@@ -81,6 +81,16 @@ ReactionsPlugin.filterSettingsGet = async function (hookData) {
 	return hookData;
 };
 
+ReactionsPlugin.addNotificationFilters = async (data) => {
+	data.regularFilters.push({ name: '[[reactions:reactions]]', filter: 'reaction' });
+	return data;
+};
+
+ReactionsPlugin.notificationTypes = async (data) => {
+	data.types.push('notificationType_reaction');
+	return data;
+};
+
 ReactionsPlugin.getPostReactions = async function (data) {
 	if (data.uid === 0) {
 		return data;
@@ -370,6 +380,7 @@ SocketPlugins.reactions = {
 				topics.getTopicFields(data.tid, ['title']),
 			]);
 			const notifObj = await notifications.create({
+				type: 'reaction',
 				bodyShort: translator.compile(
 					'reactions:notification.user-has-reacted-with-to-your-post-in-topic',
 					userData.displayname,
@@ -484,6 +495,7 @@ SocketPlugins.reactions = {
 			const icon = messaging.getRoomIcon(roomData);
 
 			const notifObj = await notifications.create({
+				type: 'reaction',
 				bodyShort: translator.compile(
 					'reactions:notification.user-has-reacted-with-to-your-message-in-room',
 					userData.displayname,
