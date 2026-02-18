@@ -336,7 +336,7 @@ SocketPlugins.reactions = {
 		}
 		const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
 		const [postData, totalReactions, emojiIsAlreadyExist, alreadyReacted, reactionReputation] = await Promise.all([
-			posts.getPostFields(data.pid, ['tid', 'uid']),
+			posts.getPostFields(data.pid, ['pid', 'tid', 'uid', 'content', 'sourceContent']),
 			db.setCount(`pid:${data.pid}:reactions`),
 			db.isSetMember(`pid:${data.pid}:reactions`, data.reaction),
 			db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
@@ -375,9 +375,10 @@ SocketPlugins.reactions = {
 		}
 
 		if (postData.uid && postData.uid !== socket.uid) {
-			const [userData, topicData] = await Promise.all([
+			const [userData, topicData, parsedPostData] = await Promise.all([
 				user.getUserFields(socket.uid, ['username', 'fullname']),
 				topics.getTopicFields(data.tid, ['title']),
+				posts.parsePost(postData),
 			]);
 			const notifObj = await notifications.create({
 				type: 'reaction',
@@ -387,6 +388,7 @@ SocketPlugins.reactions = {
 					`:${data.reaction}:`,
 					topicData.title
 				),
+				bodyLong: parsedPostData.content,
 				nid: `uid:${socket.uid}:pid:${data.pid}:reaction:${data.reaction}`,
 				pid: data.pid,
 				tid: data.tid,
@@ -452,7 +454,7 @@ SocketPlugins.reactions = {
 		}
 		const maximumReactionsPerMessage = settings.maximumReactionsPerMessage || DEFAULT_MAX_EMOTES;
 		const [msgData, totalReactions, emojiIsAlreadyExist] = await Promise.all([
-			messaging.getMessageFields(data.mid, ['roomId', 'fromuid']),
+			messaging.getMessageFields(data.mid, ['roomId', 'fromuid', 'content']),
 			db.setCount(`mid:${data.mid}:reactions`),
 			db.isSetMember(`mid:${data.mid}:reactions`, data.reaction),
 		]);
@@ -487,9 +489,10 @@ SocketPlugins.reactions = {
 		]);
 
 		if (msgData.fromuid && msgData.fromuid !== socket.uid) {
-			const [userData, roomData] = await Promise.all([
+			const [userData, roomData, parsedMessage] = await Promise.all([
 				user.getUserFields(socket.uid, ['username', 'userslug', 'fullname']),
 				messaging.getRoomData(roomId),
+				messaging.parse(msgData.content, socket.uid, msgData.fromuid, roomId, false),
 			]);
 			const roomName = roomData.roomName || `[[modules:chat.room-id, ${roomId}]]`;
 			const icon = messaging.getRoomIcon(roomData);
@@ -503,6 +506,7 @@ SocketPlugins.reactions = {
 					icon,
 					roomName
 				),
+				bodyLong: parsedMessage,
 				roomIcon: icon,
 				nid: `uid:${socket.uid}:mid:${data.mid}:reaction:${data.reaction}`,
 				mid: data.mid,
