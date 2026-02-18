@@ -21,5 +21,5 @@
   "settings.reaction-reputations.remove": "Delete",
   "settings.reaction-reputations.edit": "Edit",
   "notification.user-has-reacted-with-to-your-post-in-topic": "<strong>%1</strong> has reacted with %2 to your post in <strong>%3</strong>",
-  "notification.user-has-reacted-with-to-your-message-in-room": "<strong>%1</strong> has reacted with %2 to your message in <strong class=\"text-nowrap\"><i class=\"fa %3\"></i>%4</strong>"
+  "notification.user-has-reacted-with-to-your-message-in-room": "<strong>%1</strong> has reacted with %2 to your message in <strong class=\"text-nowrap\"><i class=\"fa %3\"></i> %4</strong>"
 }
