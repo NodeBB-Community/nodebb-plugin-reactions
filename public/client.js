@@ -18,7 +18,7 @@ $(document).ready(function () {
 			hooks.on('action:chat.loaded', function (container) {
 				if (ajaxify.data.template.chats && ajaxify.data.roomId) {
 					setupMessageReactions(container);
-				} else if (container.hasClass('chat-modal')) {
+				} else if (container.hasClass('chat-modal') || container.attr('component') === 'chat/widget') {
 					setupMessageReactions(container);
 				}
 			});
