@@ -38,8 +38,8 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "eslint": "9.28.0",
-    "eslint-config-nodebb": "1.1.7"
+    "eslint": "10.0.2",
+    "eslint-config-nodebb": "^2.0.0"
   },
   "scripts": {
     "lint": "eslint ."

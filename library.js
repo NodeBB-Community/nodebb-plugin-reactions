@@ -560,7 +560,7 @@ SocketPlugins.reactions = {
 		if (!nameToEmoji(data.reaction)) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
-		let set = '';
+		let set;
 		if (data.type === 'post') {
 			if (!await privileges.posts.can('topics:read', data.pid, socket.uid)) {
 				throw new Error('[[error:not-allowed]]');

@@ -45,11 +45,11 @@ $(document).ready(function () {
 		setupPostReactionSockets();
 
 		$('[component="topic"]').on('click', '[component="post/reaction"]', function () {
-			var reactionElement = $(this);
-			var pid = reactionElement.attr('data-pid');
-			var reaction = reactionElement.attr('data-reaction');
-			var reacted = reactionElement.hasClass('reacted');
-			var event = 'plugins.reactions.' + (reacted ? 'removePostReaction' : 'addPostReaction');
+			const reactionElement = $(this);
+			const pid = reactionElement.attr('data-pid');
+			const reaction = reactionElement.attr('data-reaction');
+			const reacted = reactionElement.hasClass('reacted');
+			const event = 'plugins.reactions.' + (reacted ? 'removePostReaction' : 'addPostReaction');
 			socket.emit(event, {
 				pid: pid,
 				reaction: reaction,
@@ -61,8 +61,8 @@ $(document).ready(function () {
 		});
 
 		$('[component="topic"]').on('click', '[component="post/reaction/add"]', function () {
-			var reactionAddEl = $(this);
-			var pid = reactionAddEl.attr('data-pid');
+			const reactionAddEl = $(this);
+			const pid = reactionAddEl.attr('data-pid');
 			require(['emoji-dialog'], function (emojiDialog) {
 				emojiDialog.toggle(reactionAddEl[0], function (_, name, dialog) {
 					emojiDialog.dialogActions.close(dialog);
@@ -88,11 +88,11 @@ $(document).ready(function () {
 
 		const messageContent = container.find('[component="chat/message/content"]');
 		messageContent.on('click', '[component="message/reaction"]', function () {
-			var reactionElement = $(this);
-			var mid = reactionElement.attr('data-mid');
-			var reaction = reactionElement.attr('data-reaction');
-			var reacted = reactionElement.hasClass('reacted');
-			var event = 'plugins.reactions.' + (reacted ? 'removeMessageReaction' : 'addMessageReaction');
+			const reactionElement = $(this);
+			const mid = reactionElement.attr('data-mid');
+			const reaction = reactionElement.attr('data-reaction');
+			const reacted = reactionElement.hasClass('reacted');
+			const event = 'plugins.reactions.' + (reacted ? 'removeMessageReaction' : 'addMessageReaction');
 			socket.emit(event, {
 				mid: mid,
 				reaction: reaction,
@@ -147,10 +147,10 @@ $(document).ready(function () {
 	}
 
 	function updatePostReactionCount(data, type) {
-		var maxReactionsReached = parseInt(data.totalReactions, 10) > config.maximumReactions;
+		const maxReactionsReached = parseInt(data.totalReactions, 10) > config.maximumReactions;
 		$('[component="post/reaction/add"][data-pid="' + data.pid + '"]').toggleClass('max-reactions', maxReactionsReached);
 
-		var reactionEl = $(`[component="post/reaction"][data-pid="${data.pid}"][data-reaction="${data.reaction}"]`);
+		const reactionEl = $(`[component="post/reaction"][data-pid="${data.pid}"][data-reaction="${data.reaction}"]`);
 
 		if (parseInt(data.reactionCount, 10) === 0) {
 			reactionEl.tooltip('dispose');
@@ -179,10 +179,10 @@ $(document).ready(function () {
 	}
 
 	function updateMessageReactionCount(data, type) {
-		var maxReactionsReached = parseInt(data.totalReactions, 10) > config.maximumReactionsPerMessage;
+		const maxReactionsReached = parseInt(data.totalReactions, 10) > config.maximumReactionsPerMessage;
 		$('[component="message/reaction/add"][data-mid="' + data.mid + '"]').toggleClass('max-reactions', maxReactionsReached);
 
-		var reactionEl = $(`[component="message/reaction"][data-mid="${data.mid}"][data-reaction="${data.reaction}"]`);
+		const reactionEl = $(`[component="message/reaction"][data-mid="${data.mid}"][data-reaction="${data.reaction}"]`);
 
 		if (parseInt(data.reactionCount, 10) === 0) {
 			reactionEl.tooltip('dispose');

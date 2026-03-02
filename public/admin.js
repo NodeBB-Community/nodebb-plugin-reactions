@@ -3,7 +3,7 @@
 define('admin/plugins/reactions', [
 	'settings', 'alerts', 'hooks', 'emoji-dialog', 'emoji',
 ], function (Settings, alerts, hooks, emojiDialog, emoji) {
-	var ACP = {};
+	const ACP = {};
 	ACP.init = function () {
 		emoji.init(function () {
 			Settings.load('reactions', $('.reactions-settings'), onSettingsLoaded);
