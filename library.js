@@ -375,18 +375,18 @@ SocketPlugins.reactions = {
 		}
 
 		if (postData.uid && postData.uid !== socket.uid) {
-			const [userData, topicData, parsedPostData] = await Promise.all([
-				user.getUserFields(socket.uid, ['username', 'fullname']),
-				topics.getTopicFields(data.tid, ['title']),
+			const [displayname, topicTitle, parsedPostData] = await Promise.all([
+				user.getNotificationDisplayname(socket.uid),
+				topics.getNotificationTitle(data.tid),
 				posts.parsePost(postData),
 			]);
 			const notifObj = await notifications.create({
 				type: 'reaction',
 				bodyShort: translator.compile(
 					'reactions:notification.user-has-reacted-with-to-your-post-in-topic',
-					userData.displayname,
+					displayname,
 					`:${data.reaction}:`,
-					topicData.title
+					topicTitle
 				),
 				bodyLong: parsedPostData.content,
 				nid: `uid:${socket.uid}:pid:${data.pid}:reaction:${data.reaction}`,
