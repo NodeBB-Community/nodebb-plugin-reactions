@@ -1,19 +1,19 @@
 'use strict';
 
-const meta = require.main.require('./src/meta');
-const user = require.main.require('./src/user');
-const posts = require.main.require('./src/posts');
-const topics = require.main.require('./src/topics');
-const messaging = require.main.require('./src/messaging');
-const privileges = require.main.require('./src/privileges');
-const db = require.main.require('./src/database');
-const translator = require.main.require('./src/translator');
-const notifications = require.main.require('./src/notifications');
-const routesHelpers = require.main.require('./src/routes/helpers');
-const websockets = require.main.require('./src/socket.io/index');
-const SocketPlugins = require.main.require('./src/socket.io/plugins');
+const meta = nodebb.require('./src/meta');
+const user = nodebb.require('./src/user');
+const posts = nodebb.require('./src/posts');
+const topics = nodebb.require('./src/topics');
+const messaging = nodebb.require('./src/messaging');
+const privileges = nodebb.require('./src/privileges');
+const db = nodebb.require('./src/database');
+const translator = nodebb.require('./src/translator');
+const notifications = nodebb.require('./src/notifications');
+const routesHelpers = nodebb.require('./src/routes/helpers');
+const websockets = nodebb.require('./src/socket.io/index');
+const SocketPlugins = nodebb.require('./src/socket.io/plugins');
 
-const emojiParser = require.main.require('nodebb-plugin-emoji/build/lib/parse.js');
+const emojiParser = nodebb.require('nodebb-plugin-emoji/build/lib/parse.js');
 
 let emojiTable = null;
 let emojiAliases = null;
@@ -22,14 +22,14 @@ const DEFAULT_MAX_EMOTES = 4;
 
 function nameToEmoji(name) {
 	if (!emojiTable) {
-		emojiTable = require.main.require('nodebb-plugin-emoji/build/emoji/table.json');
+		emojiTable = nodebb.require('nodebb-plugin-emoji/build/emoji/table.json');
 	}
 	return emojiTable[name];
 }
 
 function parse(name) {
 	if (!emojiAliases) {
-		emojiAliases = require.main.require('nodebb-plugin-emoji/build/emoji/aliases.json');
+		emojiAliases = nodebb.require('nodebb-plugin-emoji/build/emoji/aliases.json');
 	}
 	const emoji = nameToEmoji(name) || emojiTable[emojiAliases[name]];
 	return emoji ? emojiParser.buildEmoji(emoji, '') : '';

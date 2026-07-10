@@ -236,9 +236,9 @@ $(document).ready(function () {
 					return;
 				}
 				if (usernames.length + data.otherCount > data.cutoff) {
-					usernames = usernames.join(', ').replace(/,/g, '|');
-					usernames = await translator.translate('[[topic:users_and_others, ' + usernames + ', ' + data.otherCount + ']]');
-					usernames = usernames.replace(/\|/g, ',');
+					usernames = await translator.translate(
+						translator.compile('topic:users-and-others', usernames.join(', '), data.otherCount),
+					);
 				} else {
 					usernames = usernames.join(', ');
 				}
