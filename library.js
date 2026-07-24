@@ -55,18 +55,35 @@ ReactionsPlugin.addAdminNavigation = async function (header) {
 };
 
 ReactionsPlugin.getPluginConfig = async function (config) {
-	try {
-		const settings = await meta.settings.get('reactions');
-		config.maximumReactions = settings.maximumReactions ? parseInt(settings.maximumReactions, 10) : DEFAULT_MAX_EMOTES;
-		config.maximumReactionsPerMessage = settings.maximumReactionsPerMessage ?
-			parseInt(settings.maximumReactionsPerMessage, 10) : DEFAULT_MAX_EMOTES;
-		config.enablePostReactions = settings.enablePostReactions === 'on';
-		config.enableMessageReactions = settings.enableMessageReactions === 'on';
-	} catch (e) {
-		console.error(e);
-	}
+	const settings = await loadPluginConfig();
+	config.maximumReactions = settings.maximumReactions;
+	config.maximumReactionsPerUserPerPost = settings.maximumReactionsPerUserPerPost;
+	config.maximumReactionsPerMessage = settings.maximumReactionsPerMessage;
+	config.maximumReactionsPerUserPerMessage = settings.maximumReactionsPerUserPerMessage;
+
+	config.enablePostReactions = settings.enablePostReactions;
+	config.enableMessageReactions = settings.enableMessageReactions;
 	return config;
 };
+
+async function loadPluginConfig() {
+	const settings = await meta.settings.get('reactions');
+	function parseNum(val, defaultValue) {
+		const parsed = parseInt(val, 10);
+		return Number.isNaN(parsed) ? defaultValue : parsed;
+	}
+	// posts
+	settings.maximumReactions = parseNum(settings.maximumReactions, DEFAULT_MAX_EMOTES);
+	settings.maximumReactionsPerUserPerPost = parseNum(settings.maximumReactionsPerUserPerPost, 0);
+
+	// chats
+	settings.maximumReactionsPerMessage = parseNum(settings.maximumReactionsPerMessage, DEFAULT_MAX_EMOTES);
+	settings.maximumReactionsPerUserPerMessage = parseNum(settings.maximumReactionsPerUserPerMessage, 0);
+
+	settings.enablePostReactions = settings.enablePostReactions === 'on';
+	settings.enableMessageReactions = settings.enableMessageReactions === 'on';
+	return settings;
+}
 
 ReactionsPlugin.filterSettingsGet = async function (hookData) {
 	if (hookData.plugin === 'reactions') {
@@ -97,11 +114,11 @@ ReactionsPlugin.getPostReactions = async function (data) {
 	}
 
 	try {
-		const settings = await meta.settings.get('reactions');
-		if (settings.enablePostReactions === 'off') {
+		const settings = await loadPluginConfig();
+		if (!settings.enablePostReactions) {
 			return data;
 		}
-		const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
+		const { maximumReactions } = settings;
 
 		const pids = data.posts.map(post => post && parseInt(post.pid, 10));
 		const allReactionsForPids = await db.getSetsMembers(pids.map(pid => `pid:${pid}:reactions`));
@@ -118,7 +135,7 @@ ReactionsPlugin.getPostReactions = async function (data) {
 
 				if (reactionsList && reactionsList.length > 0) {
 					pidToReactionsMap.set(pid, reactionsList);
-					pidToIsMaxReactionsReachedMap.set(pid, reactionsCount > maximumReactions);
+					pidToIsMaxReactionsReachedMap.set(pid, maximumReactions > 0 && reactionsCount >= maximumReactions);
 					reactionSets = reactionSets.concat(reactionsList.map(reaction => `pid:${pid}:reaction:${reaction}`));
 				}
 			} catch (e) {
@@ -164,14 +181,14 @@ ReactionsPlugin.getMessageReactions = async function (data) {
 	}
 
 	try {
-		const settings = await meta.settings.get('reactions');
-		if (settings.enableMessageReactions === 'off') {
+		const settings = await loadPluginConfig();
+		if (!settings.enableMessageReactions) {
 			return data;
 		}
-		const maximumReactionsPerMessage = settings.maximumReactionsPerMessage || DEFAULT_MAX_EMOTES;
+		const { maximumReactionsPerMessage } = settings;
 
 		const mids = data.messages.map(message => message && parseInt(message.mid, 10));
-		const allReactionsForMids = await db.getSetsMembers(mids.map(pid => `mid:${pid}:reactions`));
+		const allReactionsForMids = await db.getSetsMembers(mids.map(mid => `mid:${mid}:reactions`));
 
 		const midToIsMaxReactionsReachedMap = new Map(); // mid -> IsMaxReactionsReached (boolean)
 		const midToReactionsMap = new Map(); // mid -> reactions (string[])
@@ -184,7 +201,10 @@ ReactionsPlugin.getMessageReactions = async function (data) {
 
 			if (reactionsList && reactionsList.length > 0) {
 				midToReactionsMap.set(mid, reactionsList);
-				midToIsMaxReactionsReachedMap.set(mid, reactionsCount > maximumReactionsPerMessage);
+				midToIsMaxReactionsReachedMap.set(
+					mid,
+					maximumReactionsPerMessage > 0 && reactionsCount >= maximumReactionsPerMessage
+				);
 				reactionSets = reactionSets.concat(reactionsList.map(reaction => `mid:${mid}:reaction:${reaction}`));
 			}
 		}
@@ -330,11 +350,11 @@ SocketPlugins.reactions = {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
-		const settings = await meta.settings.get('reactions');
-		if (settings.enablePostReactions === 'off') {
+		const settings = await loadPluginConfig();
+		if (!settings.enablePostReactions) {
 			throw new Error('[[error:post-reactions-disabled]]');
 		}
-		const maximumReactions = settings.maximumReactions || DEFAULT_MAX_EMOTES;
+
 		const [postData, totalReactions, emojiIsAlreadyExist, alreadyReacted, reactionReputation] = await Promise.all([
 			posts.getPostFields(data.pid, ['pid', 'tid', 'uid', 'content', 'sourceContent']),
 			db.setCount(`pid:${data.pid}:reactions`),
@@ -349,18 +369,17 @@ SocketPlugins.reactions = {
 		data.uid = socket.uid;
 		data.tid = tid;
 		if (!emojiIsAlreadyExist) {
-			if (totalReactions > maximumReactions) {
-				throw new Error(`[[reactions:error.maximum-reached]] (${maximumReactions})`);
+			const { maximumReactions, maximumReactionsPerUserPerPost } = settings;
+			if (maximumReactions > 0 && totalReactions >= maximumReactions) {
+				throw new Error(`[[reactions:error.maximum-reached, ${maximumReactions}]]`);
 			}
 
-			const maximumReactionsPerUserPerPost = settings.maximumReactionsPerUserPerPost ?
-				parseInt(settings.maximumReactionsPerUserPerPost, 10) : 0;
 			if (maximumReactionsPerUserPerPost > 0) {
 				const emojiesInPost = await db.getSetMembers(`pid:${data.pid}:reactions`);
 				const userPostReactions = await db.isMemberOfSets(emojiesInPost.map(emojiName => `pid:${data.pid}:reaction:${emojiName}`), socket.uid);
 				const userPostReactionCount = userPostReactions.filter(Boolean).length;
-				if (userPostReactionCount > maximumReactionsPerUserPerPost) {
-					throw new Error(`[[reactions:error.maximum-per-user-per-post-reached]] (${maximumReactionsPerUserPerPost})`);
+				if (userPostReactionCount >= maximumReactionsPerUserPerPost) {
+					throw new Error(`[[reactions:error.maximum-per-user-per-post-reached, ${maximumReactionsPerUserPerPost}]]`);
 				}
 			}
 		}
@@ -411,12 +430,12 @@ SocketPlugins.reactions = {
 		}
 
 		const [settings, tid, hasReacted, reactionReputation] = await Promise.all([
-			meta.settings.get('reactions'),
+			loadPluginConfig(),
 			posts.getPostField(data.pid, 'tid'),
 			db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
 			getReactionReputation(data.reaction),
 		]);
-		if (settings.enablePostReactions === 'off') {
+		if (!settings.enablePostReactions) {
 			throw new Error('[[error:post-reactions-disabled]]');
 		}
 		if (!tid) {
@@ -448,11 +467,11 @@ SocketPlugins.reactions = {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
-		const settings = await meta.settings.get('reactions');
-		if (settings.enableMessageReactions === 'off') {
-			throw new Error('[[error:post-reactions-disabled]]');
+		const settings = await loadPluginConfig();
+		if (!settings.enableMessageReactions) {
+			throw new Error('[[error:message-reactions-disabled]]');
 		}
-		const maximumReactionsPerMessage = settings.maximumReactionsPerMessage || DEFAULT_MAX_EMOTES;
+
 		const [msgData, totalReactions, emojiIsAlreadyExist] = await Promise.all([
 			messaging.getMessageFields(data.mid, ['roomId', 'fromuid', 'content']),
 			db.setCount(`mid:${data.mid}:reactions`),
@@ -467,18 +486,17 @@ SocketPlugins.reactions = {
 		data.roomId = roomId;
 
 		if (!emojiIsAlreadyExist) {
-			if (totalReactions > maximumReactionsPerMessage) {
-				throw new Error(`[[reactions:error.maximum-reached]] (${maximumReactionsPerMessage})`);
+			const { maximumReactionsPerMessage, maximumReactionsPerUserPerMessage } = settings;
+			if (maximumReactionsPerMessage > 0 && totalReactions >= maximumReactionsPerMessage) {
+				throw new Error(`[[reactions:error.maximum-reached, ${maximumReactionsPerMessage}]]`);
 			}
 
-			const maximumReactionsPerUserPerMessage = settings.maximumReactionsPerUserPerMessage ?
-				parseInt(settings.maximumReactionsPerUserPerMessage, 10) : 0;
 			if (maximumReactionsPerUserPerMessage > 0) {
 				const emojiesInMessage = await db.getSetMembers(`mid:${data.mid}:reactions`);
 				const userPostReactions = await db.isMemberOfSets(emojiesInMessage.map(emojiName => `mid:${data.mid}:reaction:${emojiName}`), socket.uid);
 				const userPostReactionCount = userPostReactions.filter(Boolean).length;
-				if (userPostReactionCount > maximumReactionsPerUserPerMessage) {
-					throw new Error(`[[reactions:error.maximum-per-user-per-post-reached]] (${maximumReactionsPerUserPerMessage})`);
+				if (userPostReactionCount >= maximumReactionsPerUserPerMessage) {
+					throw new Error(`[[reactions:error.maximum-per-user-per-message-reached, ${maximumReactionsPerUserPerMessage}]]`);
 				}
 			}
 		}
@@ -530,12 +548,12 @@ SocketPlugins.reactions = {
 		}
 
 		const [settings, roomId, hasReacted] = await Promise.all([
-			meta.settings.get('reactions'),
+			loadPluginConfig(),
 			messaging.getMessageField(data.mid, 'roomId'),
 			db.isSetMember(`mid:${data.mid}:reaction:${data.reaction}`, socket.uid),
 		]);
-		if (settings.enableMessageReactions === 'off') {
-			throw new Error('[[error:post-reactions-disabled]]');
+		if (!settings.enableMessageReactions) {
+			throw new Error('[[error:message-reactions-disabled]]');
 		}
 		if (!roomId) {
 			throw new Error('[[error:no-message]]');

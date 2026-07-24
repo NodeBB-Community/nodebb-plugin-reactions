@@ -1,6 +1,8 @@
 {
-  "reactions": "Реакции",
-  "add-reaction": "Добавить реакцию",
-  "error.invalid-reaction": "Некорректная реакция",
-  "error.maximum-reached": "Максимальное количество реакций достигнуто"
+	"reactions": "Реакции",
+	"add-reaction": "Добавить реакцию",
+	"error.invalid-reaction": "Некорректная реакция",
+	"error.maximum-reached": "Максимальное количество реакций достигнуто: %1",
+	"error.maximum-per-user-per-post-reached": "Максимальное количество реакций на пользователя для этого поста достигнуто: %1",
+	"error.maximum-per-user-per-message-reached": "Максимальное количество реакций на пользователя для этого сообщения достигнуто: %1"
 }

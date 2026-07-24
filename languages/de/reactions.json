@@ -2,8 +2,11 @@
 	"reactions": "Reaktionen",
 	"add-reaction": "Reaktion hinzufügen",
 	"error.invalid-reaction": "Ungültige Reaktion",
-	"error.maximum-reached": "Maximale Reaktionen erreicht",
-	"error.maximum-per-user-per-post-reached": "Maximale Reaktionen pro Nutzer und Beitrag erreicht",
+	"error.maximum-reached": "Maximale Reaktionen erreicht: %1",
+	"error.maximum-per-user-per-post-reached": "Maximale Reaktionen pro Nutzer und Beitrag erreicht: %1",
+	"error.maximum-per-user-per-message-reached": "Maximale Reaktionen pro Nutzer und Nachricht erreicht: %1",
+	"error.post-reactions-disabled": "Reaktionen auf Beiträge sind deaktiviert",
+	"error.message-reactions-disabled": "Reaktionen auf Nachrichten sind deaktiviert",
 	"settings.title": "Plugin-Einstellungen für Reaktionen",
 	"settings.enable-post-reactions": "Reaktionen auf Posts aktivieren",
 	"settings.max-reactions-per-post": "Maximale eindeutige Reaktionen pro Beitrag (0 für unbegrenzt, Standard: 4)",
@@ -22,4 +25,4 @@
 	"settings.reaction-reputations.edit": "Bearbeiten",
 	"notification.user-has-reacted-with-to-your-post-in-topic": "<strong>%1</strong> hat mit %2 auf deinen Beitrag in <strong>%3</strong> reagiert",
 	"notification.user-has-reacted-with-to-your-message-in-room": "<strong>%1</strong> hat mit %2 auf deine Nachricht in <strong class=\"text-nowrap\"><i class=\"fa %3\"></i>%4</strong> reagiert"
-  }
+}
