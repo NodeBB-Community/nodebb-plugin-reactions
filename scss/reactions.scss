@@ -1,5 +1,6 @@
 .reactions {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 1;
 	.reaction {
 		border: 1px solid var(--bs-primary-bg-subtle);
