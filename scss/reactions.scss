@@ -1,7 +1,7 @@
 .reactions {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 1;
+	gap: 0.25rem;
 	.reaction {
 		border: 1px solid var(--bs-primary-bg-subtle);
 		display: inline-block;
