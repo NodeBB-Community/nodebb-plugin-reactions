@@ -1,5 +1,5 @@
 {
-  "name": "@nodebb/nodebb-plugin-reactions",
+  "name": "nodebb-plugin-reactions",
   "version": "3.0.4",
   "nbbpm": {
     "compatibility": "^4.16.0"
