@@ -3,7 +3,6 @@
     "name": "NodeBB Reactions",
     "description": "Reactions plugin for NodeBB",
     "url": "https://github.com/NodeBB-Community/nodebb-plugin-reactions",
-    "library": "./library.js",
     "templates": "templates",
     "languages": "languages",
     "scss": [
@@ -24,6 +23,10 @@
         { "hook": "filter:messaging.getMessages", "method": "getMessageReactions" },
         { "hook": "filter:post.get", "method": "onReply" },
         { "hook": "action:posts.purge", "method": "deleteReactions" },
+        { "hook": "filter:activitypub.emojireact", "method": "handleEmojiReact" },
+        { "hook": "filter:activitypub.like", "method": "handleLike" },
+        { "hook": "filter:activitypub.undo", "method": "handleUndo" },
+        { "hook": "filter:activitypub.announce", "method": "handleAnnounce" },
         { "hook": "filter:notifications.addFilters", "method": "addNotificationFilters" },
         { "hook": "filter:user.notificationTypes", "method": "notificationTypes" }
     ]

@@ -10,28 +10,23 @@ const db = nodebb.require('./src/database');
 const translator = nodebb.require('./src/translator');
 const notifications = nodebb.require('./src/notifications');
 const routesHelpers = nodebb.require('./src/routes/helpers');
+const nconf = nodebb.require('nconf');
+const categories = nodebb.require('./src/categories');
+const activitypub = nodebb.require('./src/activitypub');
 const websockets = nodebb.require('./src/socket.io/index');
 const SocketPlugins = nodebb.require('./src/socket.io/plugins');
 
 const emojiParser = nodebb.require('nodebb-plugin-emoji/build/lib/parse.js');
-
-let emojiTable = null;
-let emojiAliases = null;
+const helpers = require('./helpers');
 
 const DEFAULT_MAX_EMOTES = 4;
 
 function nameToEmoji(name) {
-	if (!emojiTable) {
-		emojiTable = nodebb.require('nodebb-plugin-emoji/build/emoji/table.json');
-	}
-	return emojiTable[name];
+	return helpers.getEmojiTable()[name];
 }
 
 function parse(name) {
-	if (!emojiAliases) {
-		emojiAliases = nodebb.require('nodebb-plugin-emoji/build/emoji/aliases.json');
-	}
-	const emoji = nameToEmoji(name) || emojiTable[emojiAliases[name]];
+	const emoji = nameToEmoji(name) || helpers.getEmojiTable()[helpers.getEmojiAliases()[name]];
 	return emoji ? emojiParser.buildEmoji(emoji, '') : '';
 }
 
@@ -340,6 +335,283 @@ async function giveOwnerReactionReputation(reactionReputation, pid) {
 	}
 }
 
+/**
+ * Core reaction logic, shared by the socket handlers and the ActivityPub
+ * (FEP-c0e0) inbox integration. `uid` may be a local numeric uid or a remote
+ * actor URL.
+ */
+ReactionsPlugin.addPostReaction = async function (pid, uid, reaction) {
+	const settings = await loadPluginConfig();
+	if (!settings.enablePostReactions) {
+		throw new Error('[[error:post-reactions-disabled]]');
+	}
+
+	const [postData, totalReactions, emojiIsAlreadyExist, alreadyReacted, reactionReputation] = await Promise.all([
+		posts.getPostFields(pid, ['pid', 'tid', 'uid', 'content', 'sourceContent']),
+		db.setCount(`pid:${pid}:reactions`),
+		db.isSetMember(`pid:${pid}:reactions`, reaction),
+		db.isSetMember(`pid:${pid}:reaction:${reaction}`, uid),
+		getReactionReputation(reaction),
+	]);
+	const { tid } = postData;
+	if (!tid) {
+		throw new Error('[[error:no-post]]');
+	}
+
+	if (!emojiIsAlreadyExist) {
+		const { maximumReactions, maximumReactionsPerUserPerPost } = settings;
+		if (maximumReactions > 0 && totalReactions >= maximumReactions) {
+			throw new Error(`[[reactions:error.maximum-reached, ${maximumReactions}]]`);
+		}
+
+		if (maximumReactionsPerUserPerPost > 0) {
+			const emojiesInPost = await db.getSetMembers(`pid:${pid}:reactions`);
+			const userPostReactions = await db.isMemberOfSets(emojiesInPost.map(emojiName => `pid:${pid}:reaction:${emojiName}`), uid);
+			const userPostReactionCount = userPostReactions.filter(Boolean).length;
+			if (userPostReactionCount >= maximumReactionsPerUserPerPost) {
+				throw new Error(`[[reactions:error.maximum-per-user-per-post-reached, ${maximumReactionsPerUserPerPost}]]`);
+			}
+		}
+	}
+
+	await Promise.all([
+		db.setAdd(`pid:${pid}:reactions`, reaction),
+		db.setAdd(`pid:${pid}:reaction:${reaction}`, uid),
+	]);
+
+	if (!alreadyReacted && reactionReputation > 0) {
+		await giveOwnerReactionReputation(reactionReputation, pid);
+	}
+
+	if (postData.uid && postData.uid !== uid) {
+		const [displayname, topicTitle, parsedPostData] = await Promise.all([
+			user.getNotificationDisplayname(uid),
+			topics.getNotificationTitle(tid),
+			posts.parsePost(postData),
+		]);
+		const notifObj = await notifications.create({
+			type: 'reaction',
+			bodyShort: translator.compile(
+				'reactions:notification.user-has-reacted-with-to-your-post-in-topic',
+				displayname,
+				`:${reaction}:`,
+				topicTitle
+			),
+			bodyLong: parsedPostData.content,
+			nid: `uid:${uid}:pid:${pid}:reaction:${reaction}`,
+			pid: pid,
+			tid: tid,
+			from: uid,
+			path: `/post/${pid}`,
+		});
+
+		await notifications.push(notifObj, [postData.uid]);
+	}
+
+	await sendPostEvent({ pid, uid, tid, reaction }, 'event:reactions.addPostReaction');
+};
+
+ReactionsPlugin.removePostReaction = async function (pid, uid, reaction) {
+	const settings = await loadPluginConfig();
+	if (!settings.enablePostReactions) {
+		throw new Error('[[error:post-reactions-disabled]]');
+	}
+
+	const [tid, hasReacted, reactionReputation] = await Promise.all([
+		posts.getPostField(pid, 'tid'),
+		db.isSetMember(`pid:${pid}:reaction:${reaction}`, uid),
+		getReactionReputation(reaction),
+	]);
+	if (!tid) {
+		throw new Error('[[error:no-post]]');
+	}
+
+	if (hasReacted) {
+		await db.setRemove(`pid:${pid}:reaction:${reaction}`, uid);
+	}
+
+	const reactionCount = await db.setCount(`pid:${pid}:reaction:${reaction}`);
+	if (reactionCount === 0) {
+		await db.setRemove(`pid:${pid}:reactions`, reaction);
+	}
+	if (hasReacted && reactionReputation > 0) {
+		await giveOwnerReactionReputation(-reactionReputation, pid);
+	}
+
+	await sendPostEvent({ pid, uid, tid, reaction }, 'event:reactions.removePostReaction');
+};
+
+ReactionsPlugin.rescindPostReaction = async function (pid, uid, reaction) {
+	await notifications.rescind(`uid:${uid}:pid:${pid}:reaction:${reaction}`);
+};
+
+/*
+	ActivityPub (FEP-c0e0) integration.
+
+	Core fires `filter:activitypub.<type>` for every incoming activity before
+	built-in handling. The filter payload is `{ req, activity, claimed }` — a
+	plugin may claim the activity (core then skips its built-in handler) and/or
+	transparently rewrite `activity` for the rest of the chain.
+
+	This plugin claims:
+	- `EmojiReact` (always — it is the implementation)
+	- `Like` with `content` (FEP-c0e0 requires identical handling)
+	- `Undo` of either of the above
+	- `Announce` of either of the above (category sync / relays)
+*/
+
+/**
+ * Resolve the (local or remote) post referenced by an EmojiReact activity.
+ * Returns a pid for local posts, the note URL for remote posts, or null when
+ * the post cannot be found.
+ */
+async function resolveReactionPost(object) {
+	let id;
+	let exists;
+	if (object.id.startsWith(nconf.get('url'))) {
+		const { type, id: localId } = await activitypub.helpers.resolveLocalId(object.id);
+		if (type === 'post') {
+			id = localId;
+			exists = await posts.exists(id);
+		}
+	} else {
+		id = object.id;
+		exists = await posts.exists(id);
+		if (!exists) {
+			// Proactively pull in the note
+			const asserted = await activitypub.notes.assert(0, id, { skipChecks: 1 });
+			if (!asserted) {
+				return null;
+			}
+			exists = true;
+		}
+	}
+	return id && exists ? id : null;
+}
+
+ReactionsPlugin.applyEmojiReact = async function (activity) {
+	const { actor, object, content, tag } = activity;
+
+	const id = await resolveReactionPost(object);
+	if (!id) {
+		return;
+	}
+
+	const reaction = helpers.resolveReaction(content, tag);
+	if (!reaction) {
+		activitypub.helpers.log(`[reactions/ap] Unresolvable reaction content (${JSON.stringify(content)}), ignoring.`);
+		return;
+	}
+
+	const allowed = await privileges.posts.can('posts:upvote', id, activitypub._constants.uid);
+	if (!allowed) {
+		activitypub.helpers.log(`[reactions/ap] ${id} not allowed to be reacted on.`);
+		throw new Error('[[error:no-privileges]]');
+	}
+
+	activitypub.helpers.log(`[reactions/ap] id ${id} (${reaction}) via ${actor}`);
+	await ReactionsPlugin.addPostReaction(id, actor, reaction);
+	await activitypub.feps.announce(object.id, activity);
+};
+
+ReactionsPlugin.undoEmojiReact = async function (activity) {
+	const { actor, object, content, tag } = activity;
+
+	const id = await resolveReactionPost(object);
+	if (!id) {
+		return;
+	}
+
+	const reaction = helpers.resolveReaction(content, tag);
+	if (!reaction) {
+		activitypub.helpers.log(`[reactions/ap] Unresolvable reaction content in undo, ignoring.`);
+		return;
+	}
+
+	activitypub.helpers.log(`[reactions/ap] undo id ${id} (${reaction}) via ${actor}`);
+	await ReactionsPlugin.removePostReaction(id, actor, reaction);
+	await ReactionsPlugin.rescindPostReaction(id, actor, reaction);
+	await activitypub.feps.announce(object.id, activity);
+};
+
+ReactionsPlugin.handleEmojiReact = async function (context) {
+	await ReactionsPlugin.applyEmojiReact(context.activity);
+	return { ...context, claimed: true };
+};
+
+ReactionsPlugin.handleLike = async function (context) {
+	// FEP-c0e0: a Like with content is an emoji reaction; a plain Like falls through to core
+	if (typeof context.activity.content === 'string' && context.activity.content.trim()) {
+		await ReactionsPlugin.applyEmojiReact(context.activity);
+		return { ...context, claimed: true };
+	}
+	return context;
+};
+
+ReactionsPlugin.handleUndo = async function (context) {
+	const { object } = context.activity;
+	if (!object || (object.type !== 'EmojiReact' && !(object.type === 'Like' && typeof object.content === 'string' && object.content.trim()))) {
+		return context;
+	}
+	await ReactionsPlugin.undoEmojiReact(object);
+	return { ...context, claimed: true };
+};
+
+ReactionsPlugin.handleAnnounce = async function (context) {
+	const { actor } = context.activity;
+
+	// Unwrap nested Announces and resolve string references, mirroring core
+	let { object } = context.activity;
+	while (object && object.type === 'Announce') {
+		object = object.object;
+	}
+	if (typeof object === 'string') {
+		try {
+			object = await activitypub.helpers.resolveObjects(object);
+		} catch (e) {
+			object = { id: object };
+		}
+	}
+	if (!object || (object.type !== 'EmojiReact' && !(object.type === 'Like' && typeof object.content === 'string' && object.content.trim()))) {
+		return context;
+	}
+
+	// Only category-synced or relayed announces reach local posts
+	const fromRelay = await activitypub.relays.is(actor);
+	const categoryActor = await categories.exists(actor);
+	if (!categoryActor && !fromRelay) {
+		return context;
+	}
+
+	if (categoryActor) {
+		// Mirrors core's protection: category actors can only announce activities
+		// concerning posts in said category (the post's cid is the category actor URL)
+		let id = (object.object && object.object.id) || object.object;
+		const { id: localId } = await activitypub.helpers.resolveLocalId(id);
+		id = localId || id;
+
+		if (!(await posts.exists(id)) || (await posts.getCidByPid(id)) !== actor) {
+			return context;
+		}
+	}
+
+	if (!(await activitypub.actors.assert(object.actor))) {
+		throw new Error('[[error:activitypub.invalid-id]]');
+	}
+
+	if (typeof object.object === 'string') {
+		try {
+			object.object = await activitypub.helpers.resolveObjects(object.object);
+		} catch (e) {
+			activitypub.helpers.log(`[reactions/ap] Failed to resolve announced object, using raw id: ${object.object}`);
+			object.object = { id: object.object };
+		}
+	}
+
+	await ReactionsPlugin.applyEmojiReact(object);
+	return { ...context, claimed: true };
+};
+
 SocketPlugins.reactions = {
 	addPostReaction: async function (socket, data) {
 		if (!socket.uid) {
@@ -350,75 +622,8 @@ SocketPlugins.reactions = {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
-		const settings = await loadPluginConfig();
-		if (!settings.enablePostReactions) {
-			throw new Error('[[error:post-reactions-disabled]]');
-		}
-
-		const [postData, totalReactions, emojiIsAlreadyExist, alreadyReacted, reactionReputation] = await Promise.all([
-			posts.getPostFields(data.pid, ['pid', 'tid', 'uid', 'content', 'sourceContent']),
-			db.setCount(`pid:${data.pid}:reactions`),
-			db.isSetMember(`pid:${data.pid}:reactions`, data.reaction),
-			db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
-			getReactionReputation(data.reaction),
-		]);
-		const { tid } = postData;
-		if (!tid) {
-			throw new Error('[[error:no-post]]');
-		}
 		data.uid = socket.uid;
-		data.tid = tid;
-		if (!emojiIsAlreadyExist) {
-			const { maximumReactions, maximumReactionsPerUserPerPost } = settings;
-			if (maximumReactions > 0 && totalReactions >= maximumReactions) {
-				throw new Error(`[[reactions:error.maximum-reached, ${maximumReactions}]]`);
-			}
-
-			if (maximumReactionsPerUserPerPost > 0) {
-				const emojiesInPost = await db.getSetMembers(`pid:${data.pid}:reactions`);
-				const userPostReactions = await db.isMemberOfSets(emojiesInPost.map(emojiName => `pid:${data.pid}:reaction:${emojiName}`), socket.uid);
-				const userPostReactionCount = userPostReactions.filter(Boolean).length;
-				if (userPostReactionCount >= maximumReactionsPerUserPerPost) {
-					throw new Error(`[[reactions:error.maximum-per-user-per-post-reached, ${maximumReactionsPerUserPerPost}]]`);
-				}
-			}
-		}
-
-		await Promise.all([
-			db.setAdd(`pid:${data.pid}:reactions`, data.reaction),
-			db.setAdd(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
-		]);
-
-		if (!alreadyReacted && reactionReputation > 0) {
-			await giveOwnerReactionReputation(reactionReputation, data.pid);
-		}
-
-		if (postData.uid && postData.uid !== socket.uid) {
-			const [displayname, topicTitle, parsedPostData] = await Promise.all([
-				user.getNotificationDisplayname(socket.uid),
-				topics.getNotificationTitle(data.tid),
-				posts.parsePost(postData),
-			]);
-			const notifObj = await notifications.create({
-				type: 'reaction',
-				bodyShort: translator.compile(
-					'reactions:notification.user-has-reacted-with-to-your-post-in-topic',
-					displayname,
-					`:${data.reaction}:`,
-					topicTitle
-				),
-				bodyLong: parsedPostData.content,
-				nid: `uid:${socket.uid}:pid:${data.pid}:reaction:${data.reaction}`,
-				pid: data.pid,
-				tid: data.tid,
-				from: socket.uid,
-				path: `/post/${data.pid}`,
-			});
-
-			await notifications.push(notifObj, [postData.uid]);
-		}
-
-		await sendPostEvent(data, 'event:reactions.addPostReaction');
+		await ReactionsPlugin.addPostReaction(data.pid, socket.uid, data.reaction);
 	},
 	removePostReaction: async function (socket, data) {
 		if (!socket.uid) {
@@ -429,34 +634,8 @@ SocketPlugins.reactions = {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
-		const [settings, tid, hasReacted, reactionReputation] = await Promise.all([
-			loadPluginConfig(),
-			posts.getPostField(data.pid, 'tid'),
-			db.isSetMember(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid),
-			getReactionReputation(data.reaction),
-		]);
-		if (!settings.enablePostReactions) {
-			throw new Error('[[error:post-reactions-disabled]]');
-		}
-		if (!tid) {
-			throw new Error('[[error:no-post]]');
-		}
 		data.uid = socket.uid;
-		data.tid = tid;
-
-		if (hasReacted) {
-			await db.setRemove(`pid:${data.pid}:reaction:${data.reaction}`, socket.uid);
-		}
-
-		const reactionCount = await db.setCount(`pid:${data.pid}:reaction:${data.reaction}`);
-		if (reactionCount === 0) {
-			await db.setRemove(`pid:${data.pid}:reactions`, data.reaction);
-		}
-		if (hasReacted && reactionReputation > 0) {
-			await giveOwnerReactionReputation(-reactionReputation, data.pid);
-		}
-
-		await sendPostEvent(data, 'event:reactions.removePostReaction');
+		await ReactionsPlugin.removePostReaction(data.pid, socket.uid, data.reaction);
 	},
 	addMessageReaction: async function (socket, data) {
 		if (!socket.uid) {
