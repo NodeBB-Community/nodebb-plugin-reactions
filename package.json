@@ -1,8 +1,8 @@
 {
-  "name": "@nodebb/nodebb-plugin-reactions",
+  "name": "nodebb-plugin-reactions",
   "version": "3.0.4",
   "nbbpm": {
-    "compatibility": "^4.14.0"
+    "compatibility": "^4.16.0"
   },
   "description": "Reactions plugin for NodeBB",
   "main": "library.js",
