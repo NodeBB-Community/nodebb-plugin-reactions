@@ -464,18 +464,25 @@ ReactionsPlugin.rescindPostReaction = async function (pid, uid, reaction) {
  * Resolve the (local or remote) post referenced by an EmojiReact activity.
  * Returns a pid for local posts, the note URL for remote posts, or null when
  * the post cannot be found.
+ * Handles both full objects (object.id) and bare URL strings.
  */
 async function resolveReactionPost(object) {
+	// Normalize: bare URL string or { id: '...' }
+	const objectUrl = typeof object === 'string' ? object : (object?.id || null);
+	if (!objectUrl) {
+		return null;
+	}
+
 	let id;
 	let exists;
-	if (object.id.startsWith(nconf.get('url'))) {
-		const { type, id: localId } = await activitypub.helpers.resolveLocalId(object.id);
+	if (objectUrl.startsWith(nconf.get('url'))) {
+		const { type, id: localId } = await activitypub.helpers.resolveLocalId(objectUrl);
 		if (type === 'post') {
 			id = localId;
 			exists = await posts.exists(id);
 		}
 	} else {
-		id = object.id;
+		id = objectUrl;
 		exists = await posts.exists(id);
 		if (!exists) {
 			// Proactively pull in the note

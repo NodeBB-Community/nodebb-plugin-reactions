@@ -351,6 +351,29 @@ describe('ActivityPub (FEP-c0e0)', () => {
 			const { upvoted: stillUpvoted } = await posts.hasVoted(postData.pid, remoteActor);
 			assert.strictEqual(stillUpvoted, false);
 		});
+
+		it('should handle Undo(Like) when object is a bare URL (not a full activity)', async () => {
+			// Some senders send the object as a bare URL instead of the full Like activity
+			const likeRes = mockRes();
+			await controllers.activitypub.postInbox({
+				body: { ...reactionActivity({ type: 'Like' }) },
+			}, likeRes);
+			assert.strictEqual(likeRes.statusCode, 202);
+
+			// Undo with a bare URL as the object — core inbox.undo normalizes this
+			// but the plugin's handleUndo fires first and must not crash
+			const undoRes = mockRes();
+			await controllers.activitypub.postInbox({
+				body: {
+					id: `https://example.org/activity/${utils.generateUUID()}`,
+					type: 'Undo',
+					actor: remoteActor,
+					object: `${nconf.get('url')}/post/${postData.pid}`,
+				},
+			}, undoRes);
+			// The plugin can't claim this (missing inner activity content), core handles it
+			assert.strictEqual(undoRes.statusCode, 202);
+		});
 	});
 
 	describe('Announce', () => {
