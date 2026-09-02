@@ -30,6 +30,28 @@ function parse(name) {
 	return emoji ? emojiParser.buildEmoji(emoji, '') : '';
 }
 
+async function parseReaction(name, sourceUrl) {
+	const emoji = nameToEmoji(name) || helpers.getEmojiTable()[helpers.getEmojiAliases()[name]];
+	if (emoji) {
+		return emojiParser.buildEmoji(emoji, '');
+	}
+
+	if (typeof sourceUrl === 'string') {
+		try {
+			const url = new URL(sourceUrl);
+			const hostname = url.hostname;
+			const metadata = await activitypub.emoji.getEmoji(name, hostname);
+			if (metadata) {
+				const proxyUrl = activitypub.emoji.getProxyUrl(name, hostname);
+				return `<img class="not-responsive emoji" src="${proxyUrl}" title=":${name}:" />`;
+			}
+		} catch (e) {
+			// Not a valid URL — skip custom emoji lookup
+		}
+	}
+	return '';
+}
+
 const ReactionsPlugin = module.exports;
 
 ReactionsPlugin.init = async function (params) {
@@ -150,7 +172,7 @@ ReactionsPlugin.getPostReactions = async function (data) {
 					for (const reaction of reactions) {
 						const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
 						const uids = reactionSetToUsersMap.get(reactionSet);
-						const reactionImage = parse(reaction);
+						const reactionImage = await parseReaction(reaction, post.pid);
 						if (Array.isArray(uids) && reactionImage) {
 							post.reactions.push({
 								pid: post.pid,
@@ -215,7 +237,7 @@ ReactionsPlugin.getMessageReactions = async function (data) {
 					for (const reaction of reactions) {
 						const reactionSet = `mid:${msg.mid}:reaction:${reaction}`;
 						const uids = reactionSetToUsersMap.get(reactionSet);
-						const reactionImage = parse(reaction);
+						const reactionImage = await parseReaction(reaction, msg.mid);
 						if (Array.isArray(uids) && reactionImage) {
 							msg.reactions.push({
 								mid: msg.mid,
@@ -290,7 +312,7 @@ async function sendPostEvent(data, eventName) {
 			reaction: data.reaction,
 			reactionCount,
 			totalReactions,
-			reactionImage: parse(data.reaction),
+			reactionImage: await parseReaction(data.reaction, data.pid),
 		});
 	} catch (e) {
 		console.error(e);
@@ -314,7 +336,7 @@ async function sendMessageEvent(data, eventName) {
 			reaction: data.reaction,
 			reactionCount,
 			totalReactions,
-			reactionImage: parse(data.reaction),
+			reactionImage: await parseReaction(data.reaction, data.mid),
 		});
 	} catch (e) {
 		console.error(e);
@@ -501,13 +523,36 @@ ReactionsPlugin.applyEmojiReact = async function (activity) {
 
 	const id = await resolveReactionPost(object);
 	if (!id) {
-		return;
+		return false;
 	}
 
-	const reaction = helpers.resolveReaction(content, tag);
-	if (!reaction) {
+	const resolved = helpers.resolveReaction(content, tag);
+	if (!resolved) {
 		activitypub.helpers.log(`[reactions/ap] Unresolvable reaction content (${JSON.stringify(content)}), ignoring.`);
-		return;
+		return false;
+	}
+
+	let reaction;
+	let emojiTag;
+	if (typeof resolved === 'object' && resolved.emoji) {
+		reaction = resolved.emoji;
+		emojiTag = resolved.emojiTag;
+	} else {
+		reaction = resolved;
+	}
+
+	if (emojiTag) {
+		const cacheTag = { name: emojiTag.name };
+		if (emojiTag.icon && emojiTag.icon.url) {
+			cacheTag.icon = emojiTag.icon;
+		} else if (emojiTag.id) {
+			cacheTag.icon = { url: emojiTag.id, mediaType: emojiTag.mediaType || null };
+		} else {
+			cacheTag = null;
+		}
+		if (cacheTag) {
+			await activitypub.emoji.cacheEmoji(cacheTag);
+		}
 	}
 
 	const allowed = await privileges.posts.can('posts:upvote', id, activitypub._constants.uid);
@@ -519,6 +564,7 @@ ReactionsPlugin.applyEmojiReact = async function (activity) {
 	activitypub.helpers.log(`[reactions/ap] id ${id} (${reaction}) via ${actor}`);
 	await ReactionsPlugin.addPostReaction(id, actor, reaction);
 	await activitypub.feps.announce(object.id, activity);
+	return true;
 };
 
 ReactionsPlugin.undoEmojiReact = async function (activity) {
@@ -526,19 +572,22 @@ ReactionsPlugin.undoEmojiReact = async function (activity) {
 
 	const id = await resolveReactionPost(object);
 	if (!id) {
-		return;
+		return false;
 	}
 
-	const reaction = helpers.resolveReaction(content, tag);
-	if (!reaction) {
+	const resolved = helpers.resolveReaction(content, tag);
+	if (!resolved) {
 		activitypub.helpers.log(`[reactions/ap] Unresolvable reaction content in undo, ignoring.`);
-		return;
+		return false;
 	}
+
+	const reaction = typeof resolved === 'object' ? resolved.emoji : resolved;
 
 	activitypub.helpers.log(`[reactions/ap] undo id ${id} (${reaction}) via ${actor}`);
 	await ReactionsPlugin.removePostReaction(id, actor, reaction);
 	await ReactionsPlugin.rescindPostReaction(id, actor, reaction);
 	await activitypub.feps.announce(object.id, activity);
+	return true;
 };
 
 ReactionsPlugin.handleEmojiReact = async function (context) {
@@ -547,10 +596,11 @@ ReactionsPlugin.handleEmojiReact = async function (context) {
 };
 
 ReactionsPlugin.handleLike = async function (context) {
-	// FEP-c0e0: a Like with content is an emoji reaction; a plain Like falls through to core
 	if (typeof context.activity.content === 'string' && context.activity.content.trim()) {
-		await ReactionsPlugin.applyEmojiReact(context.activity);
-		return { ...context, claimed: true };
+		const applied = await ReactionsPlugin.applyEmojiReact(context.activity);
+		if (applied) {
+			return { ...context, claimed: true };
+		}
 	}
 	return context;
 };
@@ -615,8 +665,11 @@ ReactionsPlugin.handleAnnounce = async function (context) {
 		}
 	}
 
-	await ReactionsPlugin.applyEmojiReact(object);
-	return { ...context, claimed: true };
+	const applied = await ReactionsPlugin.applyEmojiReact(object);
+	if (applied) {
+		return { ...context, claimed: true };
+	}
+	return context;
 };
 
 SocketPlugins.reactions = {

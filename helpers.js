@@ -46,10 +46,6 @@ function resolveByName(name) {
 	return null;
 }
 
-/**
- * Resolve FEP-c0e0 reaction content (unicode grapheme, `:shortcode:`, bare name,
- * or a custom-emoji `tag`) to a local emoji name. Returns null when unresolvable.
- */
 function resolveReaction(content, tag) {
 	if (typeof content !== 'string' || !content.trim()) {
 		return null;
@@ -90,7 +86,13 @@ function resolveReaction(content, tag) {
 	if (!reaction && Array.isArray(tag)) {
 		const emojiTag = tag.find(t => t && t.type === 'Emoji' && typeof t.name === 'string');
 		if (emojiTag) {
-			reaction = resolveByName(emojiTag.name.replace(/^:|:$/g, ''));
+			const name = emojiTag.name.replace(/^:|:$/g, '');
+			// Try to resolve as a local emoji first
+			reaction = resolveByName(name);
+			// If not local, return the tag so the caller can cache the custom emoji
+			if (!reaction) {
+				return { emoji: name, emojiTag };
+			}
 		}
 	}
 

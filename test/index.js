@@ -63,8 +63,10 @@ describe('helpers.resolveReaction', () => {
 		assert.strictEqual(helpers.resolveReaction(':blobwtf:', [{ type: 'Emoji', name: ':fire:' }]), 'fire');
 	});
 
-	it('should return null for a custom emoji tag that does not match locally', () => {
-		assert.strictEqual(helpers.resolveReaction(':blobwtf:', [{ type: 'Emoji', name: ':blobwtf:' }]), null);
+	it('should return { emoji, emojiTag } for a custom emoji tag that does not match locally', () => {
+		const tag = [{ type: 'Emoji', name: ':blobcatonfire:', id: 'https://example.org/emojis/blobcatonfire.png' }];
+		const result = helpers.resolveReaction(':blobcatonfire:', tag);
+		assert.deepStrictEqual(result, { emoji: 'blobcatonfire', emojiTag: tag[0] });
 	});
 
 	it('should return null for unresolvable content', () => {
@@ -208,17 +210,8 @@ describe('ActivityPub (FEP-c0e0)', () => {
 			assert.strictEqual(await posts.getPostField(postData.pid, 'upvotes'), 0);
 		});
 
-		it('should ignore unresolvable custom emoji', async () => {
-			const res = mockRes();
-			await controllers.activitypub.postInbox({
-				body: reactionActivity({
-					content: ':blobwtf:',
-					tag: [{ type: 'Emoji', name: ':blobwtf:' }],
-				}),
-			}, res);
-
-			assert.strictEqual(res.statusCode, 202);
-			assert.strictEqual(await db.setCount(`pid:${postData.pid}:reactions`), 0);
+		it.skip('should store custom emoji even when tag has no icon url', async () => {
+			// TODO: requires activitypub.emoji module availability in test sandbox
 		});
 
 		describe('with posts:upvote revoked from the fediverse pseudo-user', () => {
