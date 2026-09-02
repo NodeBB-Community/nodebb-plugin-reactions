@@ -30,46 +30,25 @@ function parse(name) {
 	return emoji ? emojiParser.buildEmoji(emoji, '') : '';
 }
 
-async function parseReaction(name, sourceUrl) {
+async function parseReaction(name) {
+	// Local emoji: name has no colon, resolve from table
 	const emoji = nameToEmoji(name) || helpers.getEmojiTable()[helpers.getEmojiAliases()[name]];
 	if (emoji) {
 		return emojiParser.buildEmoji(emoji, '');
 	}
 
-	// Try to find the custom emoji: first by source URL hostname, then by scanning emoji:ap:lookup
-	let hostname = null;
-	if (typeof sourceUrl === 'string') {
-		try {
-			hostname = new URL(sourceUrl).hostname;
-		} catch (e) {
-			// Not a valid URL (e.g. numeric pid)
+	// Custom emoji: name is stored as shortcode:hostname (buildFieldKey format)
+	const idx = name.indexOf(':');
+	if (idx !== -1) {
+		const shortcode = name.slice(0, idx);
+		const hostname = name.slice(idx + 1);
+		const metadata = await activitypub.emoji.getEmoji(shortcode, hostname);
+		if (metadata) {
+			const proxyUrl = activitypub.emoji.getProxyUrl(shortcode, hostname);
+			return `<img class="not-responsive emoji" src="${proxyUrl}" title=":${shortcode}:" />`;
 		}
 	}
 
-	let metadata = null;
-	if (hostname) {
-		metadata = await activitypub.emoji.getEmoji(name, hostname);
-	}
-
-	// Fallback: scan emoji:ap:lookup for any entry matching this shortcode
-	if (!metadata) {
-		const allKeys = await db.getObjectKeys('emoji:ap:lookup');
-		if (allKeys && allKeys.length > 0) {
-			const matchKey = allKeys.find(k => k.startsWith(`${name}:`));
-			if (matchKey) {
-				const idx = matchKey.indexOf(':');
-				if (idx !== -1) {
-					hostname = matchKey.slice(idx + 1);
-					metadata = await activitypub.emoji.getEmoji(name, hostname);
-				}
-			}
-		}
-	}
-
-	if (metadata) {
-		const proxyUrl = activitypub.emoji.getProxyUrl(name, hostname);
-		return `<img class="not-responsive emoji" src="${proxyUrl}" title=":${name}:" />`;
-	}
 	return '';
 }
 
@@ -193,7 +172,7 @@ ReactionsPlugin.getPostReactions = async function (data) {
 					for (const reaction of reactions) {
 						const reactionSet = `pid:${post.pid}:reaction:${reaction}`;
 						const uids = reactionSetToUsersMap.get(reactionSet);
-						const reactionImage = await parseReaction(reaction, post.pid);
+						const reactionImage = await parseReaction(reaction);
 						if (Array.isArray(uids) && reactionImage) {
 							post.reactions.push({
 								pid: post.pid,
@@ -258,7 +237,7 @@ ReactionsPlugin.getMessageReactions = async function (data) {
 					for (const reaction of reactions) {
 						const reactionSet = `mid:${msg.mid}:reaction:${reaction}`;
 						const uids = reactionSetToUsersMap.get(reactionSet);
-						const reactionImage = await parseReaction(reaction, msg.mid);
+						const reactionImage = await parseReaction(reaction);
 						if (Array.isArray(uids) && reactionImage) {
 							msg.reactions.push({
 								mid: msg.mid,
@@ -333,7 +312,7 @@ async function sendPostEvent(data, eventName) {
 			reaction: data.reaction,
 			reactionCount,
 			totalReactions,
-			reactionImage: await parseReaction(data.reaction, data.pid),
+			reactionImage: await parseReaction(data.reaction),
 		});
 	} catch (e) {
 		console.error(e);
@@ -357,7 +336,7 @@ async function sendMessageEvent(data, eventName) {
 			reaction: data.reaction,
 			reactionCount,
 			totalReactions,
-			reactionImage: await parseReaction(data.reaction, data.mid),
+			reactionImage: await parseReaction(data.reaction),
 		});
 	} catch (e) {
 		console.error(e);
@@ -572,7 +551,16 @@ ReactionsPlugin.applyEmojiReact = async function (activity) {
 			cacheTag = null;
 		}
 		if (cacheTag) {
-			await activitypub.emoji.cacheEmoji(cacheTag);
+			const cached = await activitypub.emoji.cacheEmoji(cacheTag);
+			if (cached) {
+				// Use the normalized icon from cacheTag to extract hostname
+				const hostname = activitypub.emoji.extractHostname(cacheTag.icon);
+				if (hostname) {
+					// Store reaction as qualified name: shortcode:hostname
+					// (matches the emoji:ap:lookup field key for direct lookup)
+					reaction = activitypub.emoji.buildFieldKey(reaction, hostname);
+				}
+			}
 		}
 	}
 
@@ -602,7 +590,23 @@ ReactionsPlugin.undoEmojiReact = async function (activity) {
 		return false;
 	}
 
-	const reaction = typeof resolved === 'object' ? resolved.emoji : resolved;
+	let reaction;
+	let emojiTag;
+	if (typeof resolved === 'object' && resolved.emoji) {
+		reaction = resolved.emoji;
+		emojiTag = resolved.emojiTag;
+	} else {
+		reaction = resolved;
+	}
+
+	// Rebuild qualified name for custom emoji (must match the stored name)
+	if (emojiTag) {
+		const icon = emojiTag.icon || (emojiTag.id ? { url: emojiTag.id } : null);
+		const hostname = activitypub.emoji.extractHostname(icon);
+		if (hostname) {
+			reaction = activitypub.emoji.buildFieldKey(reaction, hostname);
+		}
+	}
 
 	activitypub.helpers.log(`[reactions/ap] undo id ${id} (${reaction}) via ${actor}`);
 	await ReactionsPlugin.removePostReaction(id, actor, reaction);
