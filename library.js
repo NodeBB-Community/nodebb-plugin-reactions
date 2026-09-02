@@ -52,6 +52,15 @@ async function parseReaction(name) {
 	return '';
 }
 
+async function isValidReaction(name) {
+	// Allow local emoji
+	if (nameToEmoji(name) || helpers.getEmojiTable()[helpers.getEmojiAliases()[name]]) {
+		return true;
+	}
+	// Allow cached custom emoji (shortcode:hostname is the emoji:ap:lookup field key)
+	return db.isObjectField('emoji:ap:lookup', name);
+}
+
 const ReactionsPlugin = module.exports;
 
 ReactionsPlugin.init = async function (params) {
@@ -703,7 +712,7 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:not-logged-in]]');
 		}
 
-		if (!nameToEmoji(data.reaction)) {
+		if (!(await isValidReaction(data.reaction))) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
@@ -715,7 +724,7 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:not-logged-in]]');
 		}
 
-		if (!nameToEmoji(data.reaction)) {
+		if (!(await isValidReaction(data.reaction))) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
@@ -727,7 +736,7 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:not-logged-in]]');
 		}
 
-		if (!nameToEmoji(data.reaction)) {
+		if (!(await isValidReaction(data.reaction))) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
@@ -807,7 +816,7 @@ SocketPlugins.reactions = {
 			throw new Error('[[error:not-logged-in]]');
 		}
 
-		if (!nameToEmoji(data.reaction)) {
+		if (!(await isValidReaction(data.reaction))) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 
@@ -839,7 +848,7 @@ SocketPlugins.reactions = {
 		if (!socket.uid) {
 			throw new Error('[[error:not-logged-in]]');
 		}
-		if (!nameToEmoji(data.reaction)) {
+		if (!(await isValidReaction(data.reaction))) {
 			throw new Error('[[reactions:error.invalid-reaction]]');
 		}
 		let set;
