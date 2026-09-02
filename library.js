@@ -36,18 +36,39 @@ async function parseReaction(name, sourceUrl) {
 		return emojiParser.buildEmoji(emoji, '');
 	}
 
+	// Try to find the custom emoji: first by source URL hostname, then by scanning emoji:ap:lookup
+	let hostname = null;
 	if (typeof sourceUrl === 'string') {
 		try {
-			const url = new URL(sourceUrl);
-			const hostname = url.hostname;
-			const metadata = await activitypub.emoji.getEmoji(name, hostname);
-			if (metadata) {
-				const proxyUrl = activitypub.emoji.getProxyUrl(name, hostname);
-				return `<img class="not-responsive emoji" src="${proxyUrl}" title=":${name}:" />`;
-			}
+			hostname = new URL(sourceUrl).hostname;
 		} catch (e) {
-			// Not a valid URL — skip custom emoji lookup
+			// Not a valid URL (e.g. numeric pid)
 		}
+	}
+
+	let metadata = null;
+	if (hostname) {
+		metadata = await activitypub.emoji.getEmoji(name, hostname);
+	}
+
+	// Fallback: scan emoji:ap:lookup for any entry matching this shortcode
+	if (!metadata) {
+		const allKeys = await db.getObjectKeys('emoji:ap:lookup');
+		if (allKeys && allKeys.length > 0) {
+			const matchKey = allKeys.find(k => k.startsWith(`${name}:`));
+			if (matchKey) {
+				const idx = matchKey.indexOf(':');
+				if (idx !== -1) {
+					hostname = matchKey.slice(idx + 1);
+					metadata = await activitypub.emoji.getEmoji(name, hostname);
+				}
+			}
+		}
+	}
+
+	if (metadata) {
+		const proxyUrl = activitypub.emoji.getProxyUrl(name, hostname);
+		return `<img class="not-responsive emoji" src="${proxyUrl}" title=":${name}:" />`;
 	}
 	return '';
 }
