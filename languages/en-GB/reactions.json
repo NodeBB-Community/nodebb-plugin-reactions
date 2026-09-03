@@ -23,6 +23,10 @@
 	"settings.reaction-reputations.reputation": "Reputation",
 	"settings.reaction-reputations.remove": "Delete",
 	"settings.reaction-reputations.edit": "Edit",
+	"settings.federation.title": "Federation",
+	"settings.federation.help": "When a local user reacts to a post on a remote ActivityPub instance, the reaction is federated back to the post author. Choose which Activity type to send.",
+	"settings.federation.type": "Outgoing activity type",
+	"settings.federation.type-help": "EmojiReact (FEP-c0e0) is the semantically correct type. Like is a fallback for instances that don't yet support FEP-c0e0 — but some may ignore the content field and treat it as a plain upvote.",
 	"notification.user-has-reacted-with-to-your-post-in-topic": "<strong>%1</strong> has reacted with %2 to your post in <strong>%3</strong>",
 	"notification.user-has-reacted-with-to-your-message-in-room": "<strong>%1</strong> has reacted with %2 to your message in <strong class=\"text-nowrap\"><i class=\"fa %3\"></i> %4</strong>"
 }

@@ -52,6 +52,24 @@
 						<button type="button" data-type="add" class="btn btn-info mt-2">{{tx("reactions:settings.reaction-reputations.add")}}</button>
 					</div>
 				</div>
+
+				<div class="mb-3">
+					<h5 class="fw-bold tracking-tight settings-header">{{tx("reactions:settings.federation.title")}}</h5>
+
+					<p class="form-text">
+						{{tx("reactions:settings.federation.help")}}
+					</p>
+					<div class="mb-3">
+						<label class="form-label">{{tx("reactions:settings.federation.type")}}</label>
+						<select class="form-select" id="federationType" name="federationType">
+							<option value="EmojiReact">EmojiReact (FEP-c0e0)</option>
+							<option value="Like">Like</option>
+						</select>
+						<p class="form-text">
+							{{tx("reactions:settings.federation.type-help")}}
+						</p>
+					</div>
+				</div>
 			</form>
 		</div>
 
