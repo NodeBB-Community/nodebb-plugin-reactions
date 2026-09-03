@@ -18,6 +18,7 @@ const SocketPlugins = nodebb.require('./src/socket.io/plugins');
 
 const emojiParser = nodebb.require('nodebb-plugin-emoji/build/lib/parse.js');
 const helpers = require('./helpers');
+const ap = require('./activitypub');
 
 const DEFAULT_MAX_EMOTES = 4;
 
@@ -108,6 +109,7 @@ async function loadPluginConfig() {
 
 	settings.enablePostReactions = settings.enablePostReactions === 'on';
 	settings.enableMessageReactions = settings.enableMessageReactions === 'on';
+	settings.federationType = settings.federationType || 'EmojiReact';
 	return settings;
 }
 
@@ -119,6 +121,9 @@ ReactionsPlugin.filterSettingsGet = async function (hookData) {
 		}
 		if (!values.hasOwnProperty('enableMessageReactions')) {
 			values.enableMessageReactions = 'on';
+		}
+		if (!values.hasOwnProperty('federationType')) {
+			values.federationType = 'EmojiReact';
 		}
 	}
 	return hookData;
@@ -506,11 +511,25 @@ async function resolveReactionPost(object) {
 
 	let id;
 	let exists;
-	if (objectUrl.startsWith(nconf.get('url'))) {
-		const { type, id: localId } = await activitypub.helpers.resolveLocalId(objectUrl);
-		if (type === 'post') {
-			id = localId;
-			exists = await posts.exists(id);
+	const baseUrl = nconf.get('url');
+	if (objectUrl.startsWith(baseUrl)) {
+		// Use URL parsing directly since resolveLocalId uses isUri
+		// which can fail for localhost in test environments
+		try {
+			const url = new URL(objectUrl);
+			const pathname = url.pathname.replace(nconf.get('relative_path') || '', '');
+			const parts = pathname.split('/').filter(Boolean);
+			if (parts[0] === 'post' && parts[1]) {
+				id = parts[1];
+				exists = await posts.exists(id);
+			}
+		} catch (e) {
+			// Fallback to resolveLocalId for edge cases
+			const { type, id: localId } = await activitypub.helpers.resolveLocalId(objectUrl);
+			if (type === 'post') {
+				id = localId;
+				exists = await posts.exists(id);
+			}
 		}
 	} else {
 		id = objectUrl;
@@ -718,6 +737,14 @@ SocketPlugins.reactions = {
 
 		data.uid = socket.uid;
 		await ReactionsPlugin.addPostReaction(data.pid, socket.uid, data.reaction);
+
+		// Federate outgoing reaction for remote posts
+		try {
+			const { federationType } = await loadPluginConfig();
+			await ap.send(data.pid, socket.uid, data.reaction, federationType || 'EmojiReact');
+		} catch (e) {
+			activitypub.helpers.log(`[reactions/ap] Failed to send reaction: ${e.message}`);
+		}
 	},
 	removePostReaction: async function (socket, data) {
 		if (!socket.uid) {
@@ -730,6 +757,14 @@ SocketPlugins.reactions = {
 
 		data.uid = socket.uid;
 		await ReactionsPlugin.removePostReaction(data.pid, socket.uid, data.reaction);
+
+		// Federate outgoing undo for remote posts
+		try {
+			const { federationType } = await loadPluginConfig();
+			await ap.sendUndo(data.pid, socket.uid, data.reaction, federationType || 'EmojiReact');
+		} catch (e) {
+			activitypub.helpers.log(`[reactions/ap] Failed to send undo: ${e.message}`);
+		}
 	},
 	addMessageReaction: async function (socket, data) {
 		if (!socket.uid) {
