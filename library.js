@@ -140,10 +140,6 @@ ReactionsPlugin.notificationTypes = async (data) => {
 };
 
 ReactionsPlugin.getPostReactions = async function (data) {
-	if (data.uid === 0) {
-		return data;
-	}
-
 	try {
 		const settings = await loadPluginConfig();
 		if (!settings.enablePostReactions) {
@@ -207,10 +203,6 @@ ReactionsPlugin.getPostReactions = async function (data) {
 };
 
 ReactionsPlugin.getMessageReactions = async function (data) {
-	if (data.uid === 0) {
-		return data;
-	}
-
 	try {
 		const settings = await loadPluginConfig();
 		if (!settings.enableMessageReactions) {
