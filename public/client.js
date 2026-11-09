@@ -230,28 +230,32 @@ $(document).ready(function () {
 					}
 				}
 			}
+
 			async function createTooltip(data) {
+				function doCreateTooltip(title) {
+					el.attr('title', title);
+					(new bootstrap.Tooltip(el, {
+						container: '#content',
+						html: true,
+						placement: 'top',
+						animation: false,
+					})).show();
+				}
 				const el = mouseOverReactionEl;
 				disposeTooltip(el);
-				let usernames = data.usernames.filter(name => name !== '[[global:former_user]]');
+				const usernames = data.usernames.filter(name => name !== '[[global:former-user]]');
 				if (!usernames.length) {
 					return;
 				}
+				const usersList = usernames.join(', ');
 				if (usernames.length + data.otherCount > data.cutoff) {
-					usernames = await translator.translate(
-						translator.compile('topic:users-and-others', usernames.join(', '), data.otherCount),
+					const translated = await translator.translateKey(
+						'topic:users-and-others', [usersList, data.otherCount]
 					);
+					doCreateTooltip(translated);
 				} else {
-					usernames = usernames.join(', ');
+					doCreateTooltip(utils.escapeHTML(usersList));
 				}
-
-				el.attr('title', usernames);
-				(new bootstrap.Tooltip(el, {
-					container: '#content',
-					html: true,
-					placement: 'top',
-					animation: false,
-				})).show();
 			}
 			function clearTooltipTimeout() {
 				if (tooltipTimeoutId) {
