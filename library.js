@@ -301,6 +301,21 @@ ReactionsPlugin.deleteReactions = async function (hookData) {
 	await db.deleteAll(keys);
 };
 
+ReactionsPlugin.deleteChatReactions = async function (hookData) {
+	const { mid } = hookData.message;
+	const midReactions = await db.getSetMembers(`mid:${mid}:reactions`);
+
+	const keys = [];
+	midReactions.forEach((reaction) => {
+		keys.push(
+			`mid:${mid}:reaction:${reaction}`,
+			`mid:${mid}:reactions`,
+		);
+	});
+
+	await db.deleteAll(keys);
+};
+
 async function sendPostEvent(data, eventName) {
 	try {
 		const [reactionCount, totalReactions] = await Promise.all([

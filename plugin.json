@@ -23,6 +23,7 @@
         { "hook": "filter:messaging.getMessages", "method": "getMessageReactions" },
         { "hook": "filter:post.get", "method": "onReply" },
         { "hook": "action:posts.purge", "method": "deleteReactions" },
+        { "hook": "action:messaging.purge", "method": "deleteChatReactions" },
         { "hook": "filter:activitypub.emojireact", "method": "handleEmojiReact" },
         { "hook": "filter:activitypub.like", "method": "handleLike" },
         { "hook": "filter:activitypub.undo", "method": "handleUndo" },
