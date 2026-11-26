@@ -302,14 +302,14 @@ ReactionsPlugin.deleteReactions = async function (hookData) {
 };
 
 ReactionsPlugin.deleteChatReactions = async function (hookData) {
-	const { mid } = hookData.message;
-	const midReactions = await db.getSetMembers(`mid:${mid}:reactions`);
+	const mids = hookData.messages.map(m => m && m.mid);
+	const midsReactions = await db.getSetsMembers(mids.map(mid => `mid:${mid}:reactions`));
 
 	const keys = [];
-	midReactions.forEach((reaction) => {
+	midsReactions.forEach((reactions, index) => {
 		keys.push(
-			`mid:${mid}:reaction:${reaction}`,
-			`mid:${mid}:reactions`,
+			...reactions.map(reaction => `mid:${mids[index]}:reaction:${reaction}`),
+			`mid:${mids[index]}:reactions`,
 		);
 	});
 
